@@ -1,0 +1,19 @@
+[project]
+name = "gamelibrary"
+version = "0.1.0"
+description = "Unified view of my game libraries across platforms"
+requires-python = ">=3.11"
+dependencies = ["httpx>=0.27", "python-dotenv>=1.0", "legendary-gl>=0.20"]
+
+[project.scripts]
+gamelibrary = "gamelibrary.cli:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["gamelibrary", "gamelibrary.providers"]
+
+[tool.setuptools.package-data]
+gamelibrary = ["static/*"]

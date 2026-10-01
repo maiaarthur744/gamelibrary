@@ -1,0 +1,946 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Game Library</title>
+    <style>
+      :root {
+        --bg: #f6f6f4;
+        --surface: #ffffff;
+        --text: #1c1c1a;
+        --muted: #6b6b66;
+        --border: #e2e2dd;
+        --accent: #2f5fd0;
+        --st-playing: #c9810a;
+        --st-played: #2e7d4f;
+        --st-backlog: #2f5fd0;
+        --st-replay: #0e8a8a;
+        --st-dropped: #b3402f;
+        --steam: #2a475e;
+        --gog: #8a3fc7;
+        --epic: #2b2b2b;
+        --battlenet: #0a7bd4;
+        --amazon: #e07b00;
+        --other: #6b6b66;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #141416;
+          --surface: #1d1d20;
+          --text: #ececea;
+          --muted: #9a9a94;
+          --border: #2e2e33;
+          --accent: #7a9cf0;
+          --st-playing: #f0b04a;
+          --st-played: #5cc488;
+          --st-backlog: #7a9cf0;
+          --st-replay: #4cc9c9;
+          --st-dropped: #f0806e;
+          --steam: #66a3d6;
+          --gog: #b77ee8;
+          --epic: #b8b8b8;
+          --battlenet: #4aa3f0;
+          --amazon: #f0a030;
+          --other: #9a9a94;
+        }
+      }
+      * {
+        box-sizing: border-box;
+      }
+      [hidden] {
+        display: none !important;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font:
+          15px/1.45 system-ui,
+          -apple-system,
+          sans-serif;
+      }
+      main {
+        max-width: 960px;
+        margin: 0 auto;
+        padding: 24px 16px 64px;
+      }
+      header {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: baseline;
+        gap: 8px 24px;
+        margin-bottom: 16px;
+      }
+      h1 {
+        font-size: 22px;
+        margin: 0;
+      }
+      .stats {
+        color: var(--muted);
+        font-size: 14px;
+      }
+      .stats b {
+        color: var(--text);
+        font-weight: 600;
+      }
+
+      .toolbar {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+        background: var(--bg);
+        padding: 8px 0 12px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+        border-bottom: 1px solid var(--border);
+      }
+      input[type="search"],
+      select {
+        font: inherit;
+        color: var(--text);
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 7px 10px;
+      }
+      input[type="search"] {
+        flex: 1 1 220px;
+        min-width: 0;
+      }
+      .chip {
+        font: inherit;
+        font-size: 13px;
+        color: var(--text);
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        padding: 5px 11px;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .chip[aria-pressed="true"] {
+        border-color: var(--accent);
+        box-shadow: inset 0 0 0 1px var(--accent);
+      }
+      .chip .n {
+        color: var(--muted);
+      }
+      .dot {
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        background: var(--c, var(--other));
+        flex: none;
+      }
+      .toolbar .label {
+        font-size: 13px;
+        color: var(--muted);
+      }
+      .toolbar .row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        align-items: center;
+        width: 100%;
+      }
+
+      .count {
+        color: var(--muted);
+        font-size: 13px;
+        margin: 12px 0 8px;
+      }
+      ul {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: grid;
+        gap: 6px;
+      }
+      details {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+      }
+      summary {
+        list-style: none;
+        cursor: pointer;
+        padding: 10px 14px;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 6px 12px;
+      }
+      summary::-webkit-details-marker {
+        display: none;
+      }
+      .title {
+        flex: 1 1 240px;
+        font-weight: 500;
+      }
+      .badges {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        font-size: 12px;
+        color: var(--muted);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 2px 7px;
+      }
+      .dup {
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--accent);
+      }
+      .hours {
+        font-size: 13px;
+        color: var(--muted);
+        min-width: 52px;
+        text-align: right;
+      }
+      .entries {
+        border-top: 1px solid var(--border);
+        padding: 6px 14px 10px;
+        display: grid;
+        gap: 4px;
+        font-size: 14px;
+      }
+      .entry {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px 10px;
+        align-items: center;
+      }
+      .entry .t {
+        flex: 1 1 240px;
+      }
+      .entry a {
+        color: var(--accent);
+        text-decoration: none;
+      }
+      .entry a:hover {
+        text-decoration: underline;
+      }
+      .thumb {
+        width: 40px;
+        height: 54px;
+        border-radius: 4px;
+        object-fit: cover;
+        flex: none;
+        background: var(--border);
+      }
+      .ph {
+        display: grid;
+        place-items: center;
+        background: var(--border);
+        color: var(--muted);
+        font-weight: 600;
+      }
+      summary {
+        padding: 8px 14px 8px 8px;
+      }
+      ul.grid {
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        gap: 12px;
+      }
+      .card {
+        all: unset;
+        box-sizing: border-box;
+        cursor: pointer;
+        display: block;
+        width: 100%;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        overflow: hidden;
+      }
+      .card:focus-visible {
+        outline: 2px solid var(--accent);
+      }
+      .card .cover {
+        position: relative;
+        aspect-ratio: 2 / 3;
+        background: var(--border);
+      }
+      .card .cover img,
+      .card .cover .ph {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: grid;
+      }
+      .card .cover .ph {
+        font-size: 32px;
+      }
+      .card .badges {
+        position: absolute;
+        left: 6px;
+        bottom: 6px;
+        right: 6px;
+        gap: 4px;
+      }
+      .card .badge {
+        background: color-mix(in srgb, var(--surface) 88%, transparent);
+      }
+      .card .title {
+        display: block;
+        padding: 8px 10px;
+        font-size: 13px;
+        font-weight: 500;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+      }
+      dialog {
+        background: var(--surface);
+        color: var(--text);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 0;
+        width: min(520px, calc(100vw - 32px));
+      }
+      dialog::backdrop {
+        background: rgba(0, 0, 0, 0.5);
+      }
+      .dlg-head {
+        display: flex;
+        gap: 14px;
+        padding: 16px;
+        align-items: flex-start;
+      }
+      .dlg-head .thumb {
+        width: 90px;
+        height: 120px;
+      }
+      .dlg-head h2 {
+        margin: 0 0 4px;
+        font-size: 18px;
+      }
+      dialog .entries {
+        border-top: 1px solid var(--border);
+        padding: 12px 16px 16px;
+      }
+      .close {
+        margin-left: auto;
+        font: inherit;
+        background: none;
+        border: 0;
+        color: var(--muted);
+        cursor: pointer;
+        font-size: 18px;
+      }
+      .hide-btn {
+        font: inherit;
+        font-size: 13px;
+        color: var(--muted);
+        background: none;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 3px 9px;
+        cursor: pointer;
+        margin-top: 6px;
+        justify-self: start;
+      }
+      .hide-btn:hover {
+        color: var(--text);
+      }
+      .is-hidden {
+        opacity: 0.55;
+      }
+      .tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 12px;
+        color: var(--accent);
+        background: color-mix(in srgb, var(--accent) 12%, transparent);
+        border-radius: 6px;
+        padding: 2px 7px;
+      }
+      .tag button {
+        all: unset;
+        cursor: pointer;
+        opacity: 0.6;
+        line-height: 1;
+      }
+      .tag button:hover {
+        opacity: 1;
+      }
+      .tagline {
+        display: block;
+        padding: 0 10px 8px;
+        font-size: 12px;
+        color: var(--accent);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .tags-edit {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        align-items: center;
+        margin-top: 8px;
+      }
+      .tag-input {
+        font: inherit;
+        font-size: 13px;
+        color: var(--text);
+        background: var(--bg);
+        border: 1px dashed var(--border);
+        border-radius: 6px;
+        padding: 3px 8px;
+        width: 120px;
+      }
+      .status {
+        display: inline-flex;
+        font-size: 12px;
+        font-weight: 500;
+        color: var(--c);
+        border: 1px solid var(--c);
+        border-radius: 6px;
+        padding: 1px 7px;
+        background: color-mix(in srgb, var(--surface) 90%, transparent);
+      }
+      .card .status {
+        position: absolute;
+        top: 6px;
+        left: 6px;
+      }
+      .status-pick {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-bottom: 8px;
+      }
+      .status-pick .chip[aria-pressed="true"] {
+        border-color: var(--c);
+        color: var(--c);
+        box-shadow: inset 0 0 0 1px var(--c);
+      }
+      .link-btn {
+        font: inherit;
+        font-size: 12px;
+        color: var(--muted);
+        background: none;
+        border: 0;
+        padding: 0;
+        cursor: pointer;
+        text-decoration: underline;
+      }
+      .link-btn:hover {
+        color: var(--text);
+      }
+      .empty {
+        color: var(--muted);
+        padding: 32px 0;
+        text-align: center;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <h1>Game Library</h1>
+        <div class="stats" id="stats"></div>
+      </header>
+
+      <div class="toolbar">
+        <div class="row">
+          <input
+            type="search"
+            id="search"
+            placeholder="Buscar jogo…"
+            autofocus
+          />
+          <select id="sort" aria-label="Ordenar">
+            <option value="title">Nome</option>
+            <option value="platforms">Mais plataformas</option>
+            <option value="playtime">Mais horas jogadas</option>
+            <option value="recent">Jogado recentemente</option>
+          </select>
+          <button class="chip" id="dupOnly" aria-pressed="false">
+            Só repetidos
+          </button>
+          <button class="chip" id="showHidden" aria-pressed="false">
+            Mostrar ocultos <span class="n" id="hiddenCount"></span>
+          </button>
+          <span class="row" style="width: auto; gap: 0">
+            <button
+              class="chip"
+              id="viewList"
+              aria-pressed="false"
+              style="border-radius: 999px 0 0 999px"
+            >
+              Lista
+            </button>
+            <button
+              class="chip"
+              id="viewGrid"
+              aria-pressed="true"
+              style="border-radius: 0 999px 999px 0; margin-left: -1px"
+            >
+              Grade
+            </button>
+          </span>
+        </div>
+        <div class="row">
+          <span class="label">Tenho em:</span>
+          <span id="platformChips" class="row" style="width: auto"></span>
+        </div>
+        <div class="row">
+          <span class="label">Status:</span>
+          <span id="statusChips" class="row" style="width: auto"></span>
+        </div>
+        <div class="row" id="tagRow" hidden>
+          <span class="label">Tags:</span>
+          <span id="tagChips" class="row" style="width: auto"></span>
+        </div>
+      </div>
+
+      <div class="count" id="count"></div>
+      <datalist id="taglist"></datalist>
+      <ul id="list"></ul>
+    </main>
+    <dialog id="dlg"></dialog>
+
+    <script>
+      const PLATFORM_NAMES = {
+        steam: "Steam",
+        gog: "GOG",
+        epic: "Epic",
+        battlenet: "Battle.net",
+        amazon: "Amazon",
+      };
+      const name = (p) => PLATFORM_NAMES[p] || p;
+      const color = (p) => `var(--${PLATFORM_NAMES[p] ? p : "other"})`;
+      const esc = (s) =>
+        String(s).replace(
+          /[&<>"']/g,
+          (c) =>
+            ({
+              "&": "&amp;",
+              "<": "&lt;",
+              ">": "&gt;",
+              '"': "&quot;",
+              "'": "&#39;",
+            })[c],
+        );
+      const hours = (m) =>
+        m ? (m >= 600 ? Math.round(m / 60) : (m / 60).toFixed(1)) + " h" : "";
+
+      let groups = [];
+      const selected = new Set();
+      let dupOnly = false;
+      let showHidden = false;
+      const selectedTags = new Set();
+      const selectedStatus = new Set(); // any-of, since a game has a single status
+      const STATUSES = [
+        ["playing", "Jogando"],
+        ["played", "Jogado"],
+        ["backlog", "Para jogar"],
+        ["replay", "Para jogar novamente"],
+        ["dropped", "Abandonado"],
+      ];
+      const statusLabel = (k) => (STATUSES.find((s) => s[0] === k) || [])[1];
+      let tagCase = new Map(); // lowercase -> spelling already in use
+      let dlgKey = null;
+      let view = "grid";
+      let byKey = new Map();
+
+      const $ = (id) => document.getElementById(id);
+
+      function renderTagChips() {
+        const counts = {};
+        for (const g of shown())
+          for (const t of g.tags) counts[t] = (counts[t] || 0) + 1;
+        for (const t of [...selectedTags])
+          if (!counts[t]) selectedTags.delete(t); // tag no longer exists
+        tagCase = new Map(
+          groups.flatMap((g) => g.tags).map((t) => [t.toLowerCase(), t]),
+        );
+        $("taglist").innerHTML = [...new Set(groups.flatMap((g) => g.tags))]
+          .sort()
+          .map((t) => `<option value="${esc(t)}">`)
+          .join("");
+        const names = Object.keys(counts).sort((a, b) => a.localeCompare(b));
+        $("tagRow").hidden = !names.length;
+        $("tagChips").innerHTML = names
+          .map(
+            (t) =>
+              `<button class="chip" data-t="${esc(t)}" aria-pressed="${selectedTags.has(t)}">${esc(t)} <span class="n">${counts[t]}</span></button>`,
+          )
+          .join("");
+      }
+
+      const shown = () => groups.filter((g) => showHidden || !g.hidden);
+
+      function renderStatusChips() {
+        const counts = {};
+        for (const g of shown())
+          counts[g.status || "none"] = (counts[g.status || "none"] || 0) + 1;
+        $("statusChips").innerHTML = [...STATUSES, ["none", "Sem status"]]
+          .map(
+            ([k, label]) =>
+              `<button class="chip" data-s="${k}" aria-pressed="${selectedStatus.has(k)}" style="--c:var(--st-${k}, var(--muted))">
+       ${k === "none" ? "" : '<span class="dot"></span>'}${label} <span class="n">${counts[k] || 0}</span></button>`,
+          )
+          .join("");
+      }
+
+      function renderChips() {
+        const counts = {};
+        for (const g of shown())
+          for (const p of g.platforms) counts[p] = (counts[p] || 0) + 1;
+        $("platformChips").innerHTML = Object.keys(counts)
+          .sort()
+          .map(
+            (p) =>
+              `<button class="chip" data-p="${esc(p)}" aria-pressed="${selected.has(p)}" style="--c:${color(p)}">
+       <span class="dot"></span>${esc(name(p))} <span class="n">${counts[p]}</span></button>`,
+          )
+          .join("");
+        renderStatusChips();
+        renderTagChips();
+      }
+
+      function renderStats() {
+        const list = groups.filter((g) => !g.hidden);
+        const hiddenN = groups.length - list.length;
+        $("hiddenCount").textContent = hiddenN || "";
+        const dups = list.filter((g) => g.platforms.length > 1).length;
+        const entries = list.reduce((n, g) => n + g.entries.length, 0);
+        $("stats").innerHTML =
+          `<b>${list.length}</b> jogos únicos · <b>${entries}</b> licenças · <b>${dups}</b> em mais de uma plataforma`;
+      }
+
+      function visible() {
+        const q = $("search").value.trim().toLowerCase();
+        let list = shown().filter(
+          (g) =>
+            (!dupOnly || g.platforms.length > 1) &&
+            [...selected].every((p) => g.platforms.includes(p)) &&
+            [...selectedTags].every((t) => g.tags.includes(t)) &&
+            (!selectedStatus.size || selectedStatus.has(g.status || "none")) &&
+            (!q ||
+              g.entries.some((e) => e.title.toLowerCase().includes(q)) ||
+              g.title.toLowerCase().includes(q) ||
+              g.tags.some((t) => t.toLowerCase().includes(q))),
+        );
+        const sort = $("sort").value;
+        const by = {
+          title: (a, b) => a.title.localeCompare(b.title),
+          platforms: (a, b) =>
+            b.platforms.length - a.platforms.length ||
+            a.title.localeCompare(b.title),
+          playtime: (a, b) =>
+            (b.playtime_minutes || 0) - (a.playtime_minutes || 0),
+          recent: (a, b) => (b.last_played || 0) - (a.last_played || 0),
+        };
+        return list.sort(by[sort]);
+      }
+
+      function coverHtml(g, cls) {
+        const src = g.covers[0];
+        if (!src)
+          return `<div class="${cls} ph">${esc(g.title[0] || "?")}</div>`;
+        return `<img class="${cls}" loading="lazy" alt="" src="${esc(src)}" data-key="${esc(g.key)}" data-i="0">`;
+      }
+
+      // A cover that fails to load falls through to the next platform's cover, then to a placeholder.
+      document.addEventListener(
+        "error",
+        (e) => {
+          const img = e.target;
+          if (!(img instanceof HTMLImageElement) || !img.dataset.key) return;
+          const g = byKey.get(img.dataset.key);
+          const next = g && g.covers[Number(img.dataset.i) + 1];
+          if (next) {
+            img.dataset.i = Number(img.dataset.i) + 1;
+            img.src = next;
+            return;
+          }
+          const ph = document.createElement("div");
+          ph.className = img.className + " ph";
+          ph.textContent = g ? g.title[0] || "?" : "?";
+          img.replaceWith(ph);
+        },
+        true,
+      );
+
+      function badgesHtml(g) {
+        return g.platforms
+          .map(
+            (p) =>
+              `<span class="badge" style="--c:${color(p)}"><span class="dot"></span>${esc(name(p))}</span>`,
+          )
+          .join("");
+      }
+
+      const statusPill = (g) =>
+        g.status
+          ? `<span class="status" style="--c:var(--st-${g.status})">${esc(statusLabel(g.status))}</span>`
+          : "";
+
+      function entriesHtml(g) {
+        const picker = `<div class="status-pick">${STATUSES.map(
+          ([k, label]) =>
+            `<button class="chip" data-action="status" data-status="${k}" data-key="${esc(g.key)}"
+       aria-pressed="${g.status === k}" style="--c:var(--st-${k})">${label}</button>`,
+        ).join("")}</div>`;
+        const canSplit = g.entries.length > 1;
+        const action = `<button class="hide-btn" data-action="${g.hidden ? "unhide" : "hide"}" data-key="${esc(g.key)}">
+    ${g.hidden ? "Mostrar de novo" : "Ocultar da lista"}</button>`;
+        const tagEditor = `<div class="tags-edit">
+    ${g.tags.map((t) => `<span class="tag">${esc(t)}<button data-action="untag" data-key="${esc(g.key)}" data-tag="${esc(t)}" aria-label="Remover tag ${esc(t)}">✕</button></span>`).join("")}
+    <input class="tag-input" list="taglist" data-key="${esc(g.key)}" placeholder="+ tag" maxlength="40"></div>`;
+        return (
+          picker +
+          g.entries
+            .map(
+              (e) => `
+    <div class="entry">
+      <span class="dot" style="--c:${color(e.platform)}"></span>
+      <span class="t">${esc(e.title)} <span class="hours">${esc(name(e.platform))}</span></span>
+      <span class="hours">${hours(e.playtime_minutes)}</span>
+      ${e.url ? `<a href="${esc(e.url)}" target="_blank" rel="noopener">abrir</a>` : ""}
+      ${
+        e.split
+          ? `<button class="link-btn" data-action="unsplit" data-platform="${esc(e.platform)}" data-pid="${esc(e.platform_id)}">Desfazer separação</button>`
+          : canSplit
+            ? `<button class="link-btn" data-action="split" data-platform="${esc(e.platform)}" data-pid="${esc(e.platform_id)}" title="Não é o mesmo jogo que os outros deste grupo">Separar</button>`
+            : ""
+      }
+    </div>`,
+            )
+            .join("") +
+          tagEditor +
+          action
+        );
+      }
+
+      function render() {
+        const open = new Set(
+          [...document.querySelectorAll("#list details[open]")].map(
+            (d) => d.dataset.key,
+          ),
+        );
+        const list = visible();
+        $("count").textContent =
+          `${list.length} ${list.length === 1 ? "jogo" : "jogos"}`;
+        $("list").className = view === "grid" ? "grid" : "";
+        if (!list.length) {
+          $("list").innerHTML =
+            '<div class="empty">Nenhum jogo encontrado.</div>';
+          return;
+        }
+        $("list").innerHTML = list
+          .map((g) =>
+            view === "grid"
+              ? `
+    <li class="${g.hidden ? "is-hidden" : ""}"><button class="card" data-key="${esc(g.key)}">
+      <div class="cover">${coverHtml(g, "img")}${statusPill(g)}<div class="badges">${badgesHtml(g)}</div></div>
+      <span class="title">${esc(g.title)}</span>
+      ${g.tags.length ? `<span class="tagline">${g.tags.map((t) => "#" + esc(t)).join(" ")}</span>` : ""}
+    </button></li>`
+              : `
+    <li class="${g.hidden ? "is-hidden" : ""}"><details data-key="${esc(g.key)}" ${open.has(g.key) ? "open" : ""}>
+      <summary>
+        ${coverHtml(g, "thumb")}
+        <span class="title">${esc(g.title)}</span>
+        ${g.platforms.length > 1 ? `<span class="dup">×${g.platforms.length}</span>` : ""}
+        <span class="badges">${statusPill(g)}${badgesHtml(g)}${g.tags.map((t) => `<span class="tag">${esc(t)}</span>`).join("")}</span>
+        <span class="hours">${hours(g.playtime_minutes)}</span>
+      </summary>
+      <div class="entries">${entriesHtml(g)}</div>
+    </details></li>`,
+          )
+          .join("");
+      }
+
+      function fillDialog(g) {
+        dlgKey = g.key;
+        $("dlg").innerHTML = `
+    <div class="dlg-head">
+      ${coverHtml(g, "thumb")}
+      <div><h2>${esc(g.title)}</h2><div class="badges">${badgesHtml(g)}</div>
+        <div class="hours" style="text-align:left;margin-top:6px">${g.playtime_minutes ? hours(g.playtime_minutes) + " no total" : ""}</div></div>
+      <button class="close" aria-label="Fechar">✕</button>
+    </div>
+    <div class="entries">${entriesHtml(g)}</div>`;
+      }
+
+      function openDialog(g) {
+        fillDialog(g);
+        $("dlg").showModal();
+      }
+
+      function setView(v) {
+        view = v;
+        try {
+          localStorage.setItem("view", v);
+        } catch {}
+        $("viewGrid").setAttribute("aria-pressed", v === "grid");
+        $("viewList").setAttribute("aria-pressed", v === "list");
+        render();
+      }
+
+      $("viewGrid").addEventListener("click", () => setView("grid"));
+      $("viewList").addEventListener("click", () => setView("list"));
+      $("list").addEventListener("click", (e) => {
+        const card = e.target.closest(".card");
+        if (card) openDialog(byKey.get(card.dataset.key));
+      });
+      $("dlg").addEventListener("click", (e) => {
+        if (e.target === $("dlg") || e.target.closest(".close"))
+          $("dlg").close();
+      });
+      $("showHidden").addEventListener("click", (e) => {
+        showHidden = !showHidden;
+        e.currentTarget.setAttribute("aria-pressed", showHidden);
+        renderChips();
+        render();
+      });
+      const post = async (path, body) =>
+        (
+          await fetch(path, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+          })
+        ).ok;
+
+      async function saveTags(g, tags) {
+        if (!(await post("/api/tags", { key: g.key, tags }))) return;
+        g.tags = tags;
+        renderChips();
+        render();
+        if ($("dlg").open) fillDialog(g);
+        document
+          .querySelector(`.tag-input[data-key="${CSS.escape(g.key)}"]`)
+          ?.focus();
+      }
+
+      document.addEventListener("click", async (e) => {
+        const btn = e.target.closest("[data-action]");
+        if (!btn) return;
+        const g = byKey.get(btn.dataset.key);
+        const action = btn.dataset.action;
+        if (action === "untag") {
+          return saveTags(
+            g,
+            g.tags.filter((t) => t !== btn.dataset.tag),
+          );
+        }
+        if (action === "status") {
+          const status =
+            g.status === btn.dataset.status ? null : btn.dataset.status; // click again to clear
+          if (!(await post("/api/status", { key: g.key, status }))) return;
+          g.status = status;
+          renderChips();
+          render();
+          if ($("dlg").open) fillDialog(g);
+          return;
+        }
+        if (action === "split" || action === "unsplit") {
+          // Group keys change, so everything is reloaded from the server.
+          const body = { platform: btn.dataset.platform, platform_id: btn.dataset.pid };
+          if (!(await post("/api/" + action, body))) return;
+          if ($("dlg").open) $("dlg").close();
+          return load();
+        }
+        const hide = action === "hide";
+        btn.disabled = true;
+        if (
+          !(await post(hide ? "/api/hide" : "/api/unhide", {
+            key: g.key,
+            title: g.title,
+          }))
+        ) {
+          btn.disabled = false;
+          return;
+        }
+        g.hidden = hide;
+        if ($("dlg").open) $("dlg").close();
+        renderStats();
+        renderChips();
+        render();
+      });
+      document.addEventListener("keydown", (e) => {
+        if (e.key !== "Enter" || !e.target.classList.contains("tag-input"))
+          return;
+        const g = byKey.get(e.target.dataset.key);
+        const raw = e.target.value.trim().replace(/\s+/g, " ");
+        if (!raw) return;
+        const tag = tagCase.get(raw.toLowerCase()) || raw; // reuse the spelling already in use
+        if (g.tags.some((t) => t.toLowerCase() === tag.toLowerCase())) {
+          e.target.value = "";
+          return;
+        }
+        saveTags(
+          g,
+          [...g.tags, tag].sort((a, b) => a.localeCompare(b)),
+        );
+      });
+      $("tagChips").addEventListener("click", (e) => {
+        const btn = e.target.closest("[data-t]");
+        if (!btn) return;
+        selectedTags.has(btn.dataset.t)
+          ? selectedTags.delete(btn.dataset.t)
+          : selectedTags.add(btn.dataset.t);
+        btn.setAttribute("aria-pressed", selectedTags.has(btn.dataset.t));
+        render();
+      });
+      $("statusChips").addEventListener("click", (e) => {
+        const btn = e.target.closest("[data-s]");
+        if (!btn) return;
+        selectedStatus.has(btn.dataset.s)
+          ? selectedStatus.delete(btn.dataset.s)
+          : selectedStatus.add(btn.dataset.s);
+        btn.setAttribute("aria-pressed", selectedStatus.has(btn.dataset.s));
+        render();
+      });
+      $("search").addEventListener("input", render);
+      $("sort").addEventListener("change", render);
+      $("dupOnly").addEventListener("click", (e) => {
+        dupOnly = !dupOnly;
+        e.currentTarget.setAttribute("aria-pressed", dupOnly);
+        render();
+      });
+      $("platformChips").addEventListener("click", (e) => {
+        const btn = e.target.closest("[data-p]");
+        if (!btn) return;
+        const p = btn.dataset.p;
+        selected.has(p) ? selected.delete(p) : selected.add(p);
+        btn.setAttribute("aria-pressed", selected.has(p));
+        render();
+      });
+
+      async function load() {
+        groups = await (await fetch("/api/games")).json();
+        byKey = new Map(groups.map((g) => [g.key, g]));
+        renderStats();
+        renderChips();
+        render();
+      }
+
+      try {
+        view = localStorage.getItem("view") === "list" ? "list" : "grid";
+      } catch {}
+      $("viewGrid").setAttribute("aria-pressed", view === "grid");
+      $("viewList").setAttribute("aria-pressed", view === "list");
+      load();
+    </script>
+  </body>
+</html>
