@@ -28,7 +28,7 @@ class Handler(BaseHTTPRequestHandler):
             rows = conn.execute("SELECT * FROM games").fetchall()
             groups = group_games(
                 rows, store.hidden_keys(conn), store.all_tags(conn), store.all_status(conn),
-                store.split_keys(conn),
+                store.split_keys(conn), store.all_ratings(conn), store.all_notes(conn),
             )
             body = json.dumps(groups).encode()
             self._send(200, "application/json", body)
@@ -49,7 +49,11 @@ class Handler(BaseHTTPRequestHandler):
             elif self.path in ("/api/hide", "/api/unhide"):
                 store.set_hidden(conn, data["key"], data.get("title", ""), self.path == "/api/hide")
             elif self.path == "/api/status":
-                store.set_status(conn, data["key"], data.get("status"))
+                store.set_status(conn, data["key"], data.get("statuses", []))
+            elif self.path == "/api/rating":
+                store.set_rating(conn, data["key"], data.get("rating"))
+            elif self.path == "/api/note":
+                store.set_note(conn, data["key"], data.get("note", ""))
             elif self.path in ("/api/split", "/api/unsplit"):
                 key = store.entry_key(data["platform"], data["platform_id"])
                 store.set_split(conn, key, self.path == "/api/split")

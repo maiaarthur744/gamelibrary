@@ -12,7 +12,8 @@ Tudo roda na sua máquina. Seus dados ficam em uma pasta local e nada é enviado
 - Ver quais jogos estão em **mais de uma loja**
 - Filtrar por loja
 - Buscar por nome ou tag e ordenar por nome, plataformas, horas jogadas ou jogado recentemente
-- Marcar um **status**: Jogando, Jogado, Para jogar, Para jogar novamente ou Abandonado
+- Marcar **status** (um jogo pode ter vários ao mesmo tempo): Jogando, Jogado, Para jogar, Para jogar novamente, Abandonado, Multiplayer/Co-op e Sem fim
+- Dar uma **nota de 1 a 5 estrelas** e escrever **anotações ou um review** de cada jogo
 - Criar **tags** com os nomes que quiser e filtrar por elas
 - **Ocultar** jogos que você não quer ver
 - **Separar** jogos que foram agrupados por engano
@@ -179,19 +180,19 @@ Como a comparação é só pelo título, às vezes dois jogos diferentes são ju
   { "Título em uma loja": "Título na outra loja" }
   ```
 
-Tags, status e ocultação ficam ligados ao grupo. Um card criado ao separar começa sem eles.
+Tags, status, nota, anotações e ocultação ficam ligados ao grupo. Um card criado ao separar começa sem eles.
 
 ## Onde ficam seus dados
 
 Tudo o que é seu fica fora do controle de versão (`.gitignore`):
 
-| Arquivo               | Conteúdo                                             |
-| --------------------- | ---------------------------------------------------- |
-| `.env`                | chave da Steam e SteamID                             |
-| `data/library.db`     | biblioteca, status, tags, jogos ocultos e separações |
-| `data/gog_token.json` | token de login da GOG                                |
-| `data/manual.json`    | sua lista manual                                     |
-| `data/aliases.json`   | junções manuais de títulos                           |
+| Arquivo               | Conteúdo                                                             |
+| --------------------- | -------------------------------------------------------------------- |
+| `.env`                | chave da Steam e SteamID                                             |
+| `data/library.db`     | biblioteca, status, notas, reviews, tags, jogos ocultos e separações |
+| `data/gog_token.json` | token de login da GOG                                                |
+| `data/manual.json`    | sua lista manual                                                     |
+| `data/aliases.json`   | junções manuais de títulos                                           |
 
 Se for compartilhar o projeto, **não envie esses arquivos**. Cada pessoa cria os próprios, seguindo os passos acima.
 

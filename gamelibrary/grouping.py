@@ -60,8 +60,10 @@ def group_games(
     rows,
     hidden: set[str] = frozenset(),
     tags: dict[str, list[str]] | None = None,
-    status: dict[str, str] | None = None,
+    status: dict[str, list[str]] | None = None,
     splits: set[str] = frozenset(),
+    ratings: dict[str, int] | None = None,
+    notes: dict[str, str] | None = None,
 ) -> list[dict]:
     aliases = _load_aliases()
     buckets: dict[str, list] = defaultdict(list)
@@ -84,7 +86,9 @@ def group_games(
                 "key": key,
                 "hidden": key in hidden,
                 "tags": (tags or {}).get(key, []),
-                "status": (status or {}).get(key),
+                "statuses": (status or {}).get(key, []),
+                "rating": (ratings or {}).get(key),
+                "note": (notes or {}).get(key, ""),
                 "title": min((_clean_title(e["title"]) for e in entries), key=lambda s: (len(s), s)),
                 "platforms": sorted({e["platform"] for e in entries}),
                 "playtime_minutes": sum(playtimes) if playtimes else None,

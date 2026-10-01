@@ -17,6 +17,9 @@
         --st-backlog: #2f5fd0;
         --st-replay: #0e8a8a;
         --st-dropped: #b3402f;
+        --st-multiplayer: #b02a7c;
+        --st-endless: #5f8a1e;
+        --star: #d99a00;
         --steam: #2a475e;
         --gog: #8a3fc7;
         --epic: #2b2b2b;
@@ -37,6 +40,9 @@
           --st-backlog: #7a9cf0;
           --st-replay: #4cc9c9;
           --st-dropped: #f0806e;
+          --st-multiplayer: #ee7fc0;
+          --st-endless: #a6d15c;
+          --star: #f5c04a;
           --steam: #66a3d6;
           --gog: #b77ee8;
           --epic: #b8b8b8;
@@ -413,10 +419,14 @@
         padding: 1px 7px;
         background: color-mix(in srgb, var(--surface) 90%, transparent);
       }
-      .card .status {
+      .card .status-stack {
         position: absolute;
         top: 6px;
         left: 6px;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 3px;
       }
       .status-pick {
         display: flex;
@@ -428,6 +438,53 @@
         border-color: var(--c);
         color: var(--c);
         box-shadow: inset 0 0 0 1px var(--c);
+      }
+      .ratingline {
+        display: block;
+        padding: 0 10px 4px;
+        font-size: 12px;
+        color: var(--star);
+        white-space: nowrap;
+      }
+      .rating {
+        display: flex;
+        align-items: center;
+        gap: 2px;
+        margin-bottom: 8px;
+      }
+      .rating button {
+        all: unset;
+        cursor: pointer;
+        font-size: 22px;
+        line-height: 1;
+        color: var(--border);
+        padding: 0 1px;
+      }
+      .rating button.on {
+        color: var(--star);
+      }
+      .rating button:focus-visible {
+        outline: 2px solid var(--accent);
+        border-radius: 3px;
+      }
+      .rating .n {
+        font-size: 13px;
+        color: var(--muted);
+        margin-left: 6px;
+      }
+      .note-input {
+        display: block;
+        width: 100%;
+        margin-top: 10px;
+        font: inherit;
+        font-size: 14px;
+        color: var(--text);
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 8px 10px;
+        resize: vertical;
+        min-height: 72px;
       }
       .link-btn {
         font: inherit;
@@ -469,6 +526,7 @@
             <option value="platforms">Mais plataformas</option>
             <option value="playtime">Mais horas jogadas</option>
             <option value="recent">Jogado recentemente</option>
+            <option value="rating">Melhor avaliados</option>
           </select>
           <button class="chip" id="dupOnly" aria-pressed="false">
             Só repetidos
@@ -545,13 +603,15 @@
       let dupOnly = false;
       let showHidden = false;
       const selectedTags = new Set();
-      const selectedStatus = new Set(); // any-of, since a game has a single status
+      const selectedStatus = new Set(); // all-of (like tags); "none" is exclusive
       const STATUSES = [
         ["playing", "Jogando"],
         ["played", "Jogado"],
         ["backlog", "Para jogar"],
         ["replay", "Para jogar novamente"],
         ["dropped", "Abandonado"],
+        ["multiplayer", "Multiplayer/Co-op"],
+        ["endless", "Sem fim"],
       ];
       const statusLabel = (k) => (STATUSES.find((s) => s[0] === k) || [])[1];
       let tagCase = new Map(); // lowercase -> spelling already in use
@@ -589,7 +649,8 @@
       function renderStatusChips() {
         const counts = {};
         for (const g of shown())
-          counts[g.status || "none"] = (counts[g.status || "none"] || 0) + 1;
+          for (const k of g.statuses.length ? g.statuses : ["none"])
+            counts[k] = (counts[k] || 0) + 1;
         $("statusChips").innerHTML = [...STATUSES, ["none", "Sem status"]]
           .map(
             ([k, label]) =>
@@ -632,11 +693,15 @@
             (!dupOnly || g.platforms.length > 1) &&
             [...selected].every((p) => g.platforms.includes(p)) &&
             [...selectedTags].every((t) => g.tags.includes(t)) &&
-            (!selectedStatus.size || selectedStatus.has(g.status || "none")) &&
+            (!selectedStatus.size ||
+              (selectedStatus.has("none")
+                ? !g.statuses.length
+                : [...selectedStatus].every((s) => g.statuses.includes(s)))) &&
             (!q ||
               g.entries.some((e) => e.title.toLowerCase().includes(q)) ||
               g.title.toLowerCase().includes(q) ||
-              g.tags.some((t) => t.toLowerCase().includes(q))),
+              g.tags.some((t) => t.toLowerCase().includes(q)) ||
+              g.note.toLowerCase().includes(q)),
         );
         const sort = $("sort").value;
         const by = {
@@ -647,6 +712,8 @@
           playtime: (a, b) =>
             (b.playtime_minutes || 0) - (a.playtime_minutes || 0),
           recent: (a, b) => (b.last_played || 0) - (a.last_played || 0),
+          rating: (a, b) =>
+            (b.rating || 0) - (a.rating || 0) || a.title.localeCompare(b.title),
         };
         return list.sort(by[sort]);
       }
@@ -688,17 +755,31 @@
           .join("");
       }
 
-      const statusPill = (g) =>
-        g.status
-          ? `<span class="status" style="--c:var(--st-${g.status})">${esc(statusLabel(g.status))}</span>`
-          : "";
+      const statusPills = (g) =>
+        g.statuses
+          .map(
+            (k) =>
+              `<span class="status" style="--c:var(--st-${k})">${esc(statusLabel(k))}</span>`,
+          )
+          .join("");
 
       function entriesHtml(g) {
         const picker = `<div class="status-pick">${STATUSES.map(
           ([k, label]) =>
             `<button class="chip" data-action="status" data-status="${k}" data-key="${esc(g.key)}"
-       aria-pressed="${g.status === k}" style="--c:var(--st-${k})">${label}</button>`,
+       aria-pressed="${g.statuses.includes(k)}" style="--c:var(--st-${k})">${label}</button>`,
         ).join("")}</div>`;
+        const rating = `<div class="rating" role="group" aria-label="Nota">${[
+          1, 2, 3, 4, 5,
+        ]
+          .map(
+            (n) =>
+              `<button class="${n <= (g.rating || 0) ? "on" : ""}" data-action="rate" data-rating="${n}" data-key="${esc(g.key)}" aria-label="${n} ${n === 1 ? "estrela" : "estrelas"}" aria-pressed="${n === g.rating}">★</button>`,
+          )
+          .join(
+            "",
+          )}${g.rating ? `<span class="n">${g.rating}/5</span>` : ""}</div>`;
+        const note = `<textarea class="note-input" data-key="${esc(g.key)}" rows="3" maxlength="20000" placeholder="Anotações ou review…">${esc(g.note)}</textarea>`;
         const canSplit = g.entries.length > 1;
         const action = `<button class="hide-btn" data-action="${g.hidden ? "unhide" : "hide"}" data-key="${esc(g.key)}">
     ${g.hidden ? "Mostrar de novo" : "Ocultar da lista"}</button>`;
@@ -707,6 +788,7 @@
     <input class="tag-input" list="taglist" data-key="${esc(g.key)}" placeholder="+ tag" maxlength="40"></div>`;
         return (
           picker +
+          rating +
           g.entries
             .map(
               (e) => `
@@ -726,6 +808,7 @@
             )
             .join("") +
           tagEditor +
+          note +
           action
         );
       }
@@ -750,8 +833,9 @@
             view === "grid"
               ? `
     <li class="${g.hidden ? "is-hidden" : ""}"><button class="card" data-key="${esc(g.key)}">
-      <div class="cover">${coverHtml(g, "img")}${statusPill(g)}<div class="badges">${badgesHtml(g)}</div></div>
+      <div class="cover">${coverHtml(g, "img")}${g.statuses.length ? `<div class="status-stack">${statusPills(g)}</div>` : ""}<div class="badges">${badgesHtml(g)}</div></div>
       <span class="title">${esc(g.title)}</span>
+      ${g.rating || g.note ? `<span class="ratingline">${"★".repeat(g.rating || 0)}${g.note ? ` <span title="Tem anotações">✎</span>` : ""}</span>` : ""}
       ${g.tags.length ? `<span class="tagline">${g.tags.map((t) => "#" + esc(t)).join(" ")}</span>` : ""}
     </button></li>`
               : `
@@ -760,7 +844,8 @@
         ${coverHtml(g, "thumb")}
         <span class="title">${esc(g.title)}</span>
         ${g.platforms.length > 1 ? `<span class="dup">×${g.platforms.length}</span>` : ""}
-        <span class="badges">${statusPill(g)}${badgesHtml(g)}${g.tags.map((t) => `<span class="tag">${esc(t)}</span>`).join("")}</span>
+        <span class="badges">${statusPills(g)}${badgesHtml(g)}${g.tags.map((t) => `<span class="tag">${esc(t)}</span>`).join("")}</span>
+        ${g.rating || g.note ? `<span class="ratingline" style="padding:0">${g.rating ? "★ " + g.rating : ""}${g.note ? ` <span title="Tem anotações">✎</span>` : ""}</span>` : ""}
         <span class="hours">${hours(g.playtime_minutes)}</span>
       </summary>
       <div class="entries">${entriesHtml(g)}</div>
@@ -843,11 +928,22 @@
             g.tags.filter((t) => t !== btn.dataset.tag),
           );
         }
+        if (action === "rate") {
+          const n = Number(btn.dataset.rating);
+          const rating = g.rating === n ? null : n; // click the same star again to clear
+          if (!(await post("/api/rating", { key: g.key, rating }))) return;
+          g.rating = rating;
+          render();
+          if ($("dlg").open) fillDialog(g);
+          return;
+        }
         if (action === "status") {
-          const status =
-            g.status === btn.dataset.status ? null : btn.dataset.status; // click again to clear
-          if (!(await post("/api/status", { key: g.key, status }))) return;
-          g.status = status;
+          const s = btn.dataset.status; // click toggles it; others are kept
+          const statuses = STATUSES.map((x) => x[0]).filter((k) =>
+            k === s ? !g.statuses.includes(k) : g.statuses.includes(k),
+          );
+          if (!(await post("/api/status", { key: g.key, statuses }))) return;
+          g.statuses = statuses;
           renderChips();
           render();
           if ($("dlg").open) fillDialog(g);
@@ -855,7 +951,10 @@
         }
         if (action === "split" || action === "unsplit") {
           // Group keys change, so everything is reloaded from the server.
-          const body = { platform: btn.dataset.platform, platform_id: btn.dataset.pid };
+          const body = {
+            platform: btn.dataset.platform,
+            platform_id: btn.dataset.pid,
+          };
           if (!(await post("/api/" + action, body))) return;
           if ($("dlg").open) $("dlg").close();
           return load();
@@ -905,11 +1004,43 @@
       $("statusChips").addEventListener("click", (e) => {
         const btn = e.target.closest("[data-s]");
         if (!btn) return;
-        selectedStatus.has(btn.dataset.s)
-          ? selectedStatus.delete(btn.dataset.s)
-          : selectedStatus.add(btn.dataset.s);
-        btn.setAttribute("aria-pressed", selectedStatus.has(btn.dataset.s));
+        const s = btn.dataset.s;
+        if (selectedStatus.has(s)) selectedStatus.delete(s);
+        else {
+          if (s === "none")
+            selectedStatus.clear(); // "no status" can't combine with others
+          else selectedStatus.delete("none");
+          selectedStatus.add(s);
+        }
+        renderStatusChips();
         render();
+      });
+      // Notes autosave shortly after typing stops, and when leaving the field or closing the dialog.
+      // They never re-render the list, so typing and focus are not interrupted.
+      let noteTimer = null;
+      let pendingNote = null;
+      async function flushNote() {
+        clearTimeout(noteTimer);
+        if (!pendingNote) return;
+        const { key, text } = pendingNote;
+        pendingNote = null;
+        if (!(await post("/api/note", { key, note: text })))
+          pendingNote ??= { key, text }; // keep it so the next flush retries
+      }
+      document.addEventListener("input", (e) => {
+        if (!e.target.classList.contains("note-input")) return;
+        const g = byKey.get(e.target.dataset.key);
+        g.note = e.target.value;
+        pendingNote = { key: g.key, text: e.target.value };
+        clearTimeout(noteTimer);
+        noteTimer = setTimeout(flushNote, 600);
+      });
+      document.addEventListener("focusout", (e) => {
+        if (e.target.classList.contains("note-input")) flushNote();
+      });
+      $("dlg").addEventListener("close", () => {
+        flushNote();
+        render(); // refresh the note/rating markers on the cards
       });
       $("search").addEventListener("input", render);
       $("sort").addEventListener("change", render);
