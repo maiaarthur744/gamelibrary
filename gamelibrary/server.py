@@ -62,6 +62,10 @@ class Handler(BaseHTTPRequestHandler):
                 store.set_rating(conn, data["key"], data.get("rating"))
             elif self.path == "/api/note":
                 store.set_note(conn, data["key"], data.get("note", ""))
+            elif self.path == "/api/developer":
+                store.set_developer(conn, data["key"], data.get("developer", ""))
+            elif self.path == "/api/playtime":
+                store.set_playtime(conn, data["key"], data.get("hours"))
             elif self.path == "/api/cover":
                 store.set_cover(conn, data["key"], data.get("url"))
             elif self.path == "/api/cover/upload":

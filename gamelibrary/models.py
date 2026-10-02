@@ -10,6 +10,7 @@ class Game:
     last_played: int | None = None  # unix timestamp
     url: str | None = None
     cover_url: str | None = None  # portrait cover when the platform has one
+    developer: str | None = None  # None = never looked up; "" = looked up, nothing found
 
 
 @dataclass
@@ -23,5 +24,7 @@ class Meta:
     notes: dict[str, str] = field(default_factory=dict)
     covers: dict[str, str] = field(default_factory=dict)  # custom cover per group
     dates: dict[str, tuple[str | None, str | None]] = field(default_factory=dict)  # (started, finished)
+    developers: dict[str, str] = field(default_factory=dict)  # typed by the user, wins over the automatic one
+    playtimes: dict[str, int] = field(default_factory=dict)  # minutes typed by the user, wins over the automatic sum
     splits: set[str] = field(default_factory=set)  # entry keys
     manual: set[str] = field(default_factory=set)  # entry keys of licenses added by hand

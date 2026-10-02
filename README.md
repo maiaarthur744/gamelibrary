@@ -11,9 +11,10 @@ Tudo roda na sua máquina. Seus dados ficam em uma pasta local e nada é enviado
 - Ver a biblioteca unificada, em **grade com capas** ou em **lista**
 - Ver quais jogos estão em **mais de uma loja**
 - Filtrar por loja
-- Buscar por nome ou tag e ordenar por nome, plataformas, horas jogadas ou jogado recentemente
+- Buscar por nome, desenvolvedora ou tag e ordenar por nome, plataformas, horas jogadas ou jogado recentemente
 - Marcar **status** (um jogo pode ter vários ao mesmo tempo): Jogando, Jogado, Para jogar, Para jogar novamente, Abandonado, Multiplayer/Co-op, Sem fim e Não jogado
-- Dar uma **nota de 1 a 5 estrelas**, escrever **anotações ou um review** e registrar a **data de início e de fim** de cada jogo
+- Dar uma **nota de 0,5 a 5 estrelas**, escrever **anotações ou um review** e registrar a **data de início e de fim** de cada jogo
+- Ver e editar a **desenvolvedora** e as **horas jogadas** de cada jogo
 - **Adicionar jogos manualmente** pela interface, sem editar os arquivos na mão
 - **Trocar a capa** de qualquer jogo por um link ou por uma imagem do seu computador
 - Criar **tags** com os nomes que quiser e filtrar por elas
@@ -173,11 +174,11 @@ O app foi feito para falar com as lojas o mínimo possível, e para você enxerg
 
 **Quantas chamadas, em geral**
 
-| Loja  | Por sync                                                                                                                                                            |
-| ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Steam | 1 (a lista de jogos). Só pergunta pelas capas de jogos novos: 1 chamada extra a cada 50 jogos cuja capa ainda não é conhecida. O primeiro sync gasta um pouco mais. |
-| GOG   | Algumas: uma por página da biblioteca, mais uma para renovar o login quando ele expira.                                                                             |
-| Epic  | Poucas (menos de 10) quando o cache do Legendary já está preenchido.                                                                                                |
+| Loja  | Por sync                                                                                                                                                                                                                               |
+| ----- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Steam | 1 (a lista de jogos). Só pergunta pela capa e pela desenvolvedora de jogos novos: 1 chamada extra a cada 50 jogos que a loja ainda não foi consultada. O primeiro sync gasta um pouco mais: cerca de 5 chamadas extras para 220 jogos. |
+| GOG   | Algumas: uma por página da biblioteca, mais uma para renovar o login quando ele expira.                                                                                                                                                |
+| Epic  | Poucas (menos de 10) quando o cache do Legendary já está preenchido.                                                                                                                                                                   |
 
 **Limites de segurança**
 
@@ -199,6 +200,13 @@ manual.json ───────────┘
 - Cada loja tem um **provider** em `gamelibrary/providers/` que devolve a lista de jogos no mesmo formato. O `sync` apaga e regrava os jogos daquela loja no banco, então jogos removidos da conta também somem.
 - O **agrupamento** (`gamelibrary/grouping.py`) compara os títulos ignorando ™, ®, acentos, pontuação e o "The" do início, e descarta sufixos de edição como "Game of the Year Edition", "Definitive Edition" e "Director's Cut".
 - O servidor (`gamelibrary/server.py`) só aceita conexões da própria máquina e serve a página em `gamelibrary/static/index.html`, sem nenhuma etapa de build.
+
+### Desenvolvedora e horas
+
+No painel de cada jogo há dois campos que você pode editar:
+
+- **Desenvolvedora.** A Steam e a Epic informam sozinhas. Para a GOG e os jogos manuais o campo começa vazio e você digita. O que você digita vale sempre mais que o automático; para voltar ao automático, apague o texto. A busca da página também procura pela desenvolvedora.
+- **Horas jogadas.** Mostra o total automático. Se você digitar um valor, ele **substitui** o total. Apagar o campo volta ao automático. Zero é um valor válido.
 
 ### Capas
 
@@ -238,7 +246,8 @@ Se for compartilhar o projeto, **não envie esses arquivos**. Cada pessoa cria o
 - **Battle.net não lista a conta inteira** na API pública, por isso é manual.
 - **Jogos de outras fontes na Epic:** a listagem inclui jogos resgatados de terceiros, mas eles podem aparecer sem link para a loja.
 - **Consoles (PlayStation, Switch, Xbox…) não têm integração:** as lojas de console não oferecem uma API que valha o risco para a sua conta. Adicione esses jogos à mão, pelo botão **+ Adicionar jogo** (escolha "Outra…" e digite, por exemplo, `playstation`).
-- **Horas jogadas** só existem para a Steam (e para o que você escrever no `manual.json`).
+- **Desenvolvedora** vem sozinha da Steam e da Epic. A GOG não informa isso na lista da biblioteca, então nos jogos da GOG e nos manuais você digita.
+- **Horas jogadas** só vêm sozinhas da Steam. Nos outros jogos, digite no campo **Horas jogadas**.
 
 ## Problemas comuns
 

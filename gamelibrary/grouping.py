@@ -81,6 +81,9 @@ def group_games(rows, meta: Meta | None = None) -> list[dict]:
         playtimes = [e["playtime_minutes"] for e in entries if e["playtime_minutes"]]
         played = [e["last_played"] for e in entries if e["last_played"]]
         started, finished = meta.dates.get(key, (None, None))
+        auto_minutes = sum(playtimes) if playtimes else None
+        typed_minutes = meta.playtimes.get(key)
+        auto_developer = next((e["developer"] for e in entries if e["developer"]), "")
         covers = [e["cover_url"] for e in entries if e["cover_url"]]
         if key in meta.covers:  # the user's own cover goes first; automatic ones stay as fallback
             covers.insert(0, meta.covers[key])
@@ -102,7 +105,12 @@ def group_games(rows, meta: Meta | None = None) -> list[dict]:
                 "custom_cover": key in meta.covers,
                 "title": min((_clean_title(e["title"]) for e in entries), key=lambda s: (len(s), s)),
                 "platforms": sorted({e["platform"] for e in entries}),
-                "playtime_minutes": sum(playtimes) if playtimes else None,
+                "playtime_minutes": typed_minutes if typed_minutes is not None else auto_minutes,
+                "playtime_auto": auto_minutes,
+                "playtime_custom": typed_minutes is not None,
+                "developer": meta.developers.get(key) or auto_developer,
+                "developer_auto": auto_developer,
+                "developer_custom": key in meta.developers,
                 "last_played": max(played) if played else None,
                 "covers": covers,
                 "alt_covers": [u for u in dict.fromkeys(alternatives) if u not in covers],

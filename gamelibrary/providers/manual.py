@@ -91,6 +91,7 @@ def fetch_games() -> list[Game]:
                 playtime_minutes=e.get("playtime_minutes"),
                 url=e.get("url"),
                 cover_url=e.get("cover_url"),
+                developer=e.get("developer") or "",
             )
         )
     return games

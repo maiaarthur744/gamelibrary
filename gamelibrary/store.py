@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS games (
     last_played      INTEGER,
     url              TEXT,
     cover_url        TEXT,
+    developer        TEXT,
     synced_at        INTEGER NOT NULL,
     PRIMARY KEY (platform, platform_id)
 );
@@ -38,7 +39,15 @@ CREATE TABLE IF NOT EXISTS game_status (
 );
 CREATE TABLE IF NOT EXISTS ratings (
     key    TEXT PRIMARY KEY,  -- grouping key
-    rating INTEGER NOT NULL CHECK (rating BETWEEN 1 AND 5)
+    rating INTEGER NOT NULL CHECK (rating BETWEEN 1 AND 10)  -- half stars: 7 = 3.5 stars
+);
+CREATE TABLE IF NOT EXISTS developers (
+    key       TEXT PRIMARY KEY,  -- grouping key
+    developer TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS playtimes (
+    key     TEXT PRIMARY KEY,  -- grouping key
+    minutes INTEGER NOT NULL CHECK (minutes >= 0)
 );
 CREATE TABLE IF NOT EXISTS notes (
     key  TEXT PRIMARY KEY,  -- grouping key
@@ -73,7 +82,23 @@ def connect() -> sqlite3.Connection:
     columns = {row["name"] for row in conn.execute("PRAGMA table_info(games)")}
     if "cover_url" not in columns:  # database created before covers existed
         conn.execute("ALTER TABLE games ADD COLUMN cover_url TEXT")
+    if "developer" not in columns:
+        conn.execute("ALTER TABLE games ADD COLUMN developer TEXT")
+    _migrate_ratings_to_half_stars(conn)
     return conn
+
+
+def _migrate_ratings_to_half_stars(conn: sqlite3.Connection) -> None:
+    """Ratings used to be 1-5 whole stars; they are now 1-10 (half stars). Same grades, doubled."""
+    row = conn.execute("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'ratings'").fetchone()
+    if not row or "BETWEEN 1 AND 5" not in row["sql"]:
+        return
+    with conn:
+        conn.execute("BEGIN")  # DDL does not open a transaction by itself, and this must be all-or-nothing
+        conn.execute("ALTER TABLE ratings RENAME TO ratings_old")
+        conn.execute("CREATE TABLE ratings (key TEXT PRIMARY KEY, rating INTEGER NOT NULL CHECK (rating BETWEEN 1 AND 10))")
+        conn.execute("INSERT INTO ratings (key, rating) SELECT key, rating * 2 FROM ratings_old")
+        conn.execute("DROP TABLE ratings_old")
 
 
 def replace_platform(conn: sqlite3.Connection, platform: str, games: list[Game]) -> None:
@@ -83,10 +108,10 @@ def replace_platform(conn: sqlite3.Connection, platform: str, games: list[Game])
         conn.execute("DELETE FROM games WHERE platform = ?", (platform,))
         conn.executemany(
             "INSERT INTO games (platform, platform_id, title, playtime_minutes, last_played,"
-            " url, cover_url, synced_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            " url, cover_url, developer, synced_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
             [
                 (g.platform, g.platform_id, g.title, g.playtime_minutes, g.last_played, g.url,
-                 g.cover_url, now)
+                 g.cover_url, g.developer, now)
                 for g in games
             ],
         )
@@ -132,13 +157,49 @@ def all_ratings(conn: sqlite3.Connection) -> dict[str, int]:
 
 
 def set_rating(conn: sqlite3.Connection, key: str, rating: int | None) -> None:
-    if rating is not None and (isinstance(rating, bool) or not isinstance(rating, int) or not 1 <= rating <= 5):
-        raise ValueError("rating must be an integer from 1 to 5")
+    if rating is not None and (isinstance(rating, bool) or not isinstance(rating, int) or not 1 <= rating <= 10):
+        raise ValueError("rating must be a whole number from 1 to 10 (half stars)")
     with conn:
         if rating is None:
             conn.execute("DELETE FROM ratings WHERE key = ?", (key,))
         else:
             conn.execute("INSERT OR REPLACE INTO ratings (key, rating) VALUES (?, ?)", (key, rating))
+
+
+def all_developers(conn: sqlite3.Connection) -> dict[str, str]:
+    return {r["key"]: r["developer"] for r in conn.execute("SELECT key, developer FROM developers")}
+
+
+def set_developer(conn: sqlite3.Connection, key: str, developer: str) -> None:
+    if not isinstance(developer, str):
+        raise TypeError("developer must be a string")
+    developer = " ".join(developer.split())[:200]
+    with conn:
+        if developer:
+            conn.execute("INSERT OR REPLACE INTO developers (key, developer) VALUES (?, ?)", (key, developer))
+        else:  # emptying the field goes back to the automatic value
+            conn.execute("DELETE FROM developers WHERE key = ?", (key,))
+
+
+def all_playtimes(conn: sqlite3.Connection) -> dict[str, int]:
+    return {r["key"]: r["minutes"] for r in conn.execute("SELECT key, minutes FROM playtimes")}
+
+
+def set_playtime(conn: sqlite3.Connection, key: str, hours: float | None) -> None:
+    """The hours typed by the user replace the automatic total. None or "" removes them."""
+    if hours is None or hours == "":
+        minutes = None
+    else:
+        if isinstance(hours, bool) or not isinstance(hours, (int, float)):
+            raise TypeError("hours must be a number")
+        if not 0 <= hours <= 100000:  # also rejects NaN
+            raise ValueError("as horas jogadas precisam estar entre 0 e 100000")
+        minutes = round(hours * 60)
+    with conn:
+        if minutes is None:
+            conn.execute("DELETE FROM playtimes WHERE key = ?", (key,))
+        else:
+            conn.execute("INSERT OR REPLACE INTO playtimes (key, minutes) VALUES (?, ?)", (key, minutes))
 
 
 def all_notes(conn: sqlite3.Connection) -> dict[str, str]:
@@ -205,6 +266,8 @@ def load_meta(conn: sqlite3.Connection) -> Meta:
         tags=all_tags(conn),
         status=all_status(conn),
         ratings=all_ratings(conn),
+        developers=all_developers(conn),
+        playtimes=all_playtimes(conn),
         notes=all_notes(conn),
         covers=all_covers(conn),
         dates=all_dates(conn),

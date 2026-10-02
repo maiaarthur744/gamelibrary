@@ -591,20 +591,77 @@
         gap: 2px;
         margin-bottom: 8px;
       }
-      .rating button {
-        all: unset;
-        cursor: pointer;
+      /* A star is two invisible buttons side by side: the left half is x.5, the right half is x. */
+      .rating .star {
+        position: relative;
+        display: inline-block;
         font-size: 22px;
         line-height: 1;
-        color: var(--border);
         padding: 0 1px;
+        color: var(--border);
       }
-      .rating button.on {
+      .rating .star.on {
         color: var(--star);
       }
-      .rating button:focus-visible {
+      .rating .star.half {
+        background: linear-gradient(90deg, var(--star) 50%, var(--border) 50%);
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+      }
+      .rating .star button {
+        all: unset;
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        width: 50%;
+        cursor: pointer;
+      }
+      .rating .star .hl {
+        left: 0;
+      }
+      .rating .star .hr {
+        right: 0;
+      }
+      .rating .star button:focus-visible {
         outline: 2px solid var(--accent);
         border-radius: 3px;
+      }
+      .facts {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px 16px;
+        margin-bottom: 8px;
+        font-size: 13px;
+        color: var(--muted);
+      }
+      .facts label {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .facts input {
+        font: inherit;
+        font-size: 13px;
+        color: var(--text);
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 3px 8px;
+      }
+      .dev-input {
+        width: 210px;
+      }
+      .hours-input {
+        width: 84px;
+      }
+      .fact-note {
+        font-size: 12px;
+      }
+      .dev-line {
+        font-size: 13px;
+        color: var(--muted);
+        margin-top: 2px;
       }
       .rating .n {
         font-size: 13px;
@@ -772,6 +829,24 @@
       const hours = (m) =>
         m ? (m >= 600 ? Math.round(m / 60) : (m / 60).toFixed(1)) + " h" : "";
 
+      // Ratings are stored as 1-10 (half stars): 7 means 3.5 stars.
+      const starsText = (r) => "★".repeat(Math.floor(r / 2)) + (r % 2 ? "½" : "");
+      const ratingText = (r) => (r / 2).toLocaleString("pt-BR");
+      const hoursValue = (g) =>
+        g.playtime_minutes != null ? String(+(g.playtime_minutes / 60).toFixed(2)) : "";
+      const devNote = (g) =>
+        g.developer_custom
+          ? "editado" + (g.developer_auto ? ` (automático: ${g.developer_auto})` : "")
+          : g.developer_auto
+            ? "automático"
+            : "";
+      const hoursNote = (g) =>
+        g.playtime_custom
+          ? "editado" + (g.playtime_auto != null ? ` (automático: ${hours(g.playtime_auto)})` : "")
+          : g.playtime_auto != null
+            ? "automático"
+            : "";
+
       let groups = [];
       const selected = new Set();
       let dupOnly = false;
@@ -877,7 +952,8 @@
               g.entries.some((e) => e.title.toLowerCase().includes(q)) ||
               g.title.toLowerCase().includes(q) ||
               g.tags.some((t) => t.toLowerCase().includes(q)) ||
-              g.note.toLowerCase().includes(q)),
+              g.note.toLowerCase().includes(q) ||
+              g.developer.toLowerCase().includes(q)),
         );
         const sort = $("sort").value;
         const by = {
@@ -972,16 +1048,19 @@
             `<button class="chip" data-action="status" data-status="${k}" data-key="${esc(g.key)}"
        aria-pressed="${g.statuses.includes(k)}" style="--c:var(--st-${k})">${label}</button>`,
         ).join("")}</div>`;
-        const rating = `<div class="rating" role="group" aria-label="Nota">${[
-          1, 2, 3, 4, 5,
-        ]
-          .map(
-            (n) =>
-              `<button class="${n <= (g.rating || 0) ? "on" : ""}" data-action="rate" data-rating="${n}" data-key="${esc(g.key)}" aria-label="${n} ${n === 1 ? "estrela" : "estrelas"}" aria-pressed="${n === g.rating}">★</button>`,
-          )
-          .join(
-            "",
-          )}${g.rating ? `<span class="n">${g.rating}/5</span>` : ""}</div>`;
+        const r = g.rating || 0;
+        const rating = `<div class="rating" role="group" aria-label="Nota">${[1, 2, 3, 4, 5]
+          .map((n) => {
+            const half = (v) =>
+              `<button class="${v % 2 ? "hl" : "hr"}" data-action="rate" data-rating="${v}" data-key="${esc(g.key)}" aria-label="${ratingText(v)} estrelas" aria-pressed="${v === g.rating}"></button>`;
+            return `<span class="star ${r >= 2 * n ? "on" : r === 2 * n - 1 ? "half" : ""}">★${half(2 * n - 1)}${half(2 * n)}</span>`;
+          })
+          .join("")}${g.rating ? `<span class="n">${ratingText(g.rating)}/5</span>` : ""}</div>`;
+        const facts = `<div class="facts">
+          <label>Desenvolvedora <input class="dev-input" data-key="${esc(g.key)}" value="${esc(g.developer)}" placeholder="Ex.: CD Projekt Red" maxlength="200"></label>
+          <span class="fact-note" data-field="developer">${esc(devNote(g))}</span>
+          <label>Horas jogadas <input class="hours-input" type="number" min="0" step="any" data-key="${esc(g.key)}" value="${esc(hoursValue(g))}" placeholder="0"></label>
+          <span class="fact-note" data-field="hours">${esc(hoursNote(g))}</span></div>`;
         const note = `<textarea class="note-input" data-key="${esc(g.key)}" rows="3" maxlength="20000" placeholder="Anotações ou review…">${esc(g.note)}</textarea>`;
         const dates = `<div class="dates">
           <label>Início <input type="date" class="date-input" data-key="${esc(g.key)}" data-field="started" value="${esc(g.started || "")}" max="${esc(g.finished || "")}"></label>
@@ -1011,6 +1090,7 @@
         return (
           picker +
           rating +
+          facts +
           dates +
           g.entries
             .map(
@@ -1061,7 +1141,7 @@
     <li class="${g.hidden ? "is-hidden" : ""}"><button class="card" data-key="${esc(g.key)}" title="${esc(g.title)}">
       <div class="cover">${coverHtml(g, "img")}${g.statuses.length ? `<div class="status-stack">${statusPills(g)}</div>` : ""}<div class="badges">${badgesHtml(g)}</div></div>
       <span class="title">${esc(g.title)}</span>
-      ${g.rating || g.note ? `<span class="ratingline">${"★".repeat(g.rating || 0)}${g.note ? ` <span title="Tem anotações">✎</span>` : ""}</span>` : ""}
+      ${g.rating || g.note ? `<span class="ratingline">${starsText(g.rating || 0)}${g.note ? ` <span title="Tem anotações">✎</span>` : ""}</span>` : ""}
       ${g.tags.length ? `<span class="tagline">${g.tags.map((t) => "#" + esc(t)).join(" ")}</span>` : ""}
     </button></li>`
               : `
@@ -1071,8 +1151,8 @@
         <span class="title">${esc(g.title)}</span>
         ${g.platforms.length > 1 ? `<span class="dup">×${g.platforms.length}</span>` : ""}
         <span class="badges">${statusPills(g)}${badgesHtml(g)}${g.tags.map((t) => `<span class="tag">${esc(t)}</span>`).join("")}</span>
-        ${g.rating || g.note ? `<span class="ratingline" style="padding:0">${g.rating ? "★ " + g.rating : ""}${g.note ? ` <span title="Tem anotações">✎</span>` : ""}</span>` : ""}
-        <span class="hours">${hours(g.playtime_minutes)}</span>
+        ${g.rating || g.note ? `<span class="ratingline" style="padding:0">${g.rating ? "★ " + ratingText(g.rating) : ""}${g.note ? ` <span title="Tem anotações">✎</span>` : ""}</span>` : ""}
+        <span class="hours hours-sum" data-key="${esc(g.key)}">${hours(g.playtime_minutes)}</span>
       </summary>
       <div class="entries">${entriesHtml(g)}</div>
     </details></li>`,
@@ -1086,8 +1166,8 @@
         $("dlg").innerHTML = `
     <div class="dlg-head">
       ${coverHtml(g, "thumb")}
-      <div><h2>${esc(g.title)}</h2><div class="badges">${badgesHtml(g)}</div>
-        <div class="hours" style="text-align:left;margin-top:6px">${g.playtime_minutes ? hours(g.playtime_minutes) + " no total" : ""}</div></div>
+      <div><h2>${esc(g.title)}</h2><div class="dev-line" data-key="${esc(g.key)}">${esc(g.developer)}</div><div class="badges" style="margin-top:6px">${badgesHtml(g)}</div>
+        <div class="hours hours-total" data-key="${esc(g.key)}" style="text-align:left;margin-top:6px">${g.playtime_minutes ? hours(g.playtime_minutes) + " no total" : ""}</div></div>
       <button class="close" aria-label="Fechar">✕</button>
     </div>
     <div class="entries">${entriesHtml(g)}</div>`;
@@ -1322,6 +1402,22 @@
         flushNote();
         render(); // refresh the note/rating markers on the cards
       });
+      // Updates the visible bits after a developer/hours edit without re-rendering (which would drop focus).
+      function patchFacts(g) {
+        const set = (selector, text) =>
+          document.querySelectorAll(selector).forEach((el) => (el.textContent = text));
+        const key = CSS.escape(g.key);
+        set(`.dev-line[data-key="${key}"]`, g.developer);
+        set(`.hours-sum[data-key="${key}"]`, hours(g.playtime_minutes));
+        set(`.hours-total[data-key="${key}"]`, g.playtime_minutes ? hours(g.playtime_minutes) + " no total" : "");
+        document.querySelectorAll(`.dev-input[data-key="${key}"]`).forEach((el) => {
+          el.closest(".facts").querySelector('[data-field="developer"]').textContent = devNote(g);
+        });
+        document.querySelectorAll(`.hours-input[data-key="${key}"]`).forEach((el) => {
+          el.closest(".facts").querySelector('[data-field="hours"]').textContent = hoursNote(g);
+        });
+      }
+
       // Start/end dates save as soon as a date is picked. No re-render, so the picker keeps focus.
       document.addEventListener("change", async (e) => {
         const input = e.target;
@@ -1346,6 +1442,33 @@
           g.finished = finished;
           field("started").max = finished || "";
           field("finished").min = started || "";
+        } else if (input.classList.contains("dev-input")) {
+          const g = byKey.get(input.dataset.key);
+          const developer = input.value.trim();
+          const res = await api("/api/developer", { key: g.key, developer });
+          if (!res.ok) {
+            alert(failMessage(res));
+            input.value = g.developer;
+            return;
+          }
+          g.developer_custom = developer !== "";
+          g.developer = developer || g.developer_auto; // empty goes back to the automatic one
+          input.value = g.developer;
+          patchFacts(g);
+        } else if (input.classList.contains("hours-input")) {
+          const g = byKey.get(input.dataset.key);
+          const raw = input.value.trim();
+          const typed = raw === "" ? null : Number(raw);
+          const res = await api("/api/playtime", { key: g.key, hours: typed });
+          if (!res.ok) {
+            alert(failMessage(res));
+            input.value = hoursValue(g);
+            return;
+          }
+          g.playtime_custom = typed !== null;
+          g.playtime_minutes = typed !== null ? Math.round(typed * 60) : g.playtime_auto;
+          input.value = hoursValue(g);
+          patchFacts(g);
         } else if (input.classList.contains("cover-file")) {
           const file = input.files[0];
           if (!file) return;

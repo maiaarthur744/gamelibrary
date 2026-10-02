@@ -12,38 +12,49 @@ ASSETS = "https://shared.akamai.steamstatic.com/store_item_assets"
 URL = "https://api.steampowered.com/IPlayerService/GetOwnedGames/v1/"
 
 
-def _known_covers() -> dict[int, str]:
-    """Covers found by earlier syncs. Their URLs are tied to the artwork, so they don't need asking again."""
-    rows = store.connect().execute(
-        "SELECT platform_id, cover_url FROM games WHERE platform = 'steam' AND cover_url LIKE ?", (f"{ASSETS}/%",)
-    )
-    return {int(r["platform_id"]): r["cover_url"] for r in rows}
+def _known_info() -> dict[int, tuple[str | None, str]]:
+    """What earlier syncs learned from the store: appid -> (cover, developer).
 
-
-def _store_covers(appids: list[int]) -> dict[int, str]:
-    """Portrait covers from the store API.
-
-    Newer apps keep their art under hashed paths, so the plain CDN URL 404s for them.
+    A game counts as already asked about once its developer is stored, even as "" (the store had none).
     """
-    covers: dict[int, str] = {}
+    rows = store.connect().execute(
+        "SELECT platform_id, cover_url, developer FROM games WHERE platform = 'steam' AND developer IS NOT NULL"
+    )
+    return {int(r["platform_id"]): (r["cover_url"], r["developer"]) for r in rows}
+
+
+def _store_info(appids: list[int]) -> dict[int, tuple[str | None, str]]:
+    """(portrait cover, developer) per game from the store API, 50 games per request.
+
+    Newer apps keep their art under hashed paths, so the plain CDN URL 404s for them. A game the store
+    doesn't know comes back as (None, ""), so it isn't asked about again on every sync.
+    """
+    info: dict[int, tuple[str | None, str]] = {}
     for i in range(0, len(appids), 50):
+        batch = appids[i : i + 50]
         payload = {
-            "ids": [{"appid": a} for a in appids[i : i + 50]],
+            "ids": [{"appid": a} for a in batch],
             "context": {"language": "english", "country_code": "US"},
-            "data_request": {"include_assets": True},
+            "data_request": {"include_assets": True, "include_basic_info": True},
         }
         try:
             resp = net.get(STORE_ITEMS, params={"input_json": json.dumps(payload)})
             resp.raise_for_status()
             items = resp.json()["response"]["store_items"]
         except (httpx.HTTPError, KeyError, ValueError):
-            continue  # this batch falls back to the plain CDN URL
+            continue  # this batch stays unasked, so the next sync tries again
+        found: dict[int, tuple[str | None, str]] = {}
         for item in items:
+            if not item.get("appid"):  # unknown apps come back as an empty item with appid 0
+                continue
             assets = item.get("assets") or {}
             template, capsule = assets.get("asset_url_format"), assets.get("library_capsule")
-            if template and capsule and item.get("appid"):
-                covers[item["appid"]] = f"{ASSETS}/" + template.replace("${FILENAME}", capsule)
-    return covers
+            cover = f"{ASSETS}/" + template.replace("${FILENAME}", capsule) if template and capsule else None
+            developers = [d["name"] for d in (item.get("basic_info") or {}).get("developers", []) if d.get("name")]
+            found[item["appid"]] = (cover, ", ".join(developers))
+        for appid in batch:
+            info[appid] = found.get(appid, (None, ""))
+    return info
 
 
 def fetch_games(refresh_covers: bool = False) -> list[Game]:
@@ -69,18 +80,24 @@ def fetch_games(refresh_covers: bool = False) -> list[Game]:
             "Steam returned no games. Is your profile's 'Game details' set to public?"
         )
 
-    # Only games without a known cover are looked up: usually none, so a sync is a single request.
-    known = {} if refresh_covers else _known_covers()
-    store_covers = known | _store_covers([g["appid"] for g in games if g["appid"] not in known])
-    return [
-        Game(
-            platform="steam",
-            platform_id=str(g["appid"]),
-            title=g.get("name") or f"App {g['appid']}",
-            playtime_minutes=g.get("playtime_forever"),
-            last_played=g.get("rtime_last_played") or None,
-            url=f"https://store.steampowered.com/app/{g['appid']}",
-            cover_url=store_covers.get(g["appid"]) or f"{CDN}/{g['appid']}/library_600x900.jpg",
+    # Only games the store was never asked about are looked up: usually none, so a sync is one request.
+    known = {} if refresh_covers else _known_info()
+    info = known | _store_info([g["appid"] for g in games if g["appid"] not in known])
+
+    result = []
+    for g in games:
+        appid = g["appid"]
+        cover, developer = info.get(appid, (None, None))  # developer None: the store lookup failed this time
+        result.append(
+            Game(
+                platform="steam",
+                platform_id=str(appid),
+                title=g.get("name") or f"App {appid}",
+                playtime_minutes=g.get("playtime_forever"),
+                last_played=g.get("rtime_last_played") or None,
+                url=f"https://store.steampowered.com/app/{appid}",
+                cover_url=cover or f"{CDN}/{appid}/library_600x900.jpg",
+                developer=developer,
+            )
         )
-        for g in games
-    ]
+    return result

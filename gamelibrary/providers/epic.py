@@ -61,6 +61,7 @@ def fetch_games() -> list[Game]:
             platform_id=g["app_name"],
             title=g["app_title"],
             cover_url=_cover(g),
+            developer=(g.get("metadata") or {}).get("developer") or "",
         )
         for g in json.loads(stdout)
     ]
