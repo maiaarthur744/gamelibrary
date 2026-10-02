@@ -108,6 +108,8 @@ def serve(port: int, open_browser: bool) -> None:
     server = ThreadingHTTPServer(("127.0.0.1", port), Handler)
     url = f"http://127.0.0.1:{port}"
     print(f"Serving on {url} (Ctrl+C to stop)")
+    print("Este servidor não faz chamadas externas (só o `sync` e os logins fazem).")
+    print("O navegador carrega as capas direto dos CDNs das lojas; isso não envolve a sua conta.")
     if open_browser:
         webbrowser.open(url)
     try:

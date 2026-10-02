@@ -3,7 +3,7 @@ import sys
 
 from dotenv import load_dotenv
 
-from . import server, store
+from . import net, server, store
 from .providers import PROVIDERS, epic, gog, manual
 
 
@@ -11,19 +11,23 @@ def cmd_sync(args: argparse.Namespace) -> int:
     conn = store.connect()
     names = [args.provider] if args.provider else list(PROVIDERS)
     failed = False
-    for name in names:
-        try:
-            if name == "manual":  # entries carry their own platform (battlenet, amazon, ...)
-                count = manual.sync(conn)
-            else:
-                games = PROVIDERS[name]()
-                store.replace_platform(conn, name, games)
-                count = len(games)
-        except Exception as e:  # keep going so one broken provider doesn't block the rest
-            print(f"{name}: FAILED - {e}", file=sys.stderr)
-            failed = True
-            continue
-        print(f"{name}: {count} games")
+    with net.session():  # the only place (besides the logins) where outside requests are possible
+        for name in names:
+            with net.provider(name):
+                try:
+                    if name == "manual":  # entries carry their own platform (battlenet, amazon, ...)
+                        count = manual.sync(conn)
+                    else:
+                        options = {"refresh_covers": True} if name == "steam" and args.refresh_covers else {}
+                        games = PROVIDERS[name](**options)
+                        store.replace_platform(conn, name, games)
+                        count = len(games)
+                except Exception as e:  # keep going so one broken provider doesn't block the rest
+                    print(f"{name}: FAILED - {e}", file=sys.stderr)
+                    failed = True
+                    continue
+            print(f"{name}: {count} games")
+        net.print_summary()
     return 1 if failed else 0
 
 
@@ -41,13 +45,15 @@ def cmd_gog_login(_: argparse.Namespace) -> int:
     print(f"   {gog.login_url()}\n")
     print("2. After login you'll land on a blank page. Copy the full URL from the address bar")
     print("   (it contains ?code=...) and paste it here.\n")
-    gog.login(input("URL or code: "))
+    with net.session(), net.provider("gog"):
+        gog.login(input("URL or code: "))
     print("GOG login saved.")
     return 0
 
 
 def cmd_epic_login(_: argparse.Namespace) -> int:
-    epic.login()
+    with net.session(), net.provider("epic"):
+        epic.login()
     return 0
 
 
@@ -63,6 +69,7 @@ def main() -> int:
 
     p = sub.add_parser("sync", help="fetch libraries into the local database")
     p.add_argument("provider", nargs="?", choices=list(PROVIDERS))
+    p.add_argument("--refresh-covers", action="store_true", help="ask Steam for every cover again (extra requests)")
     p.set_defaults(func=cmd_sync)
 
     p = sub.add_parser("list", help="show games from the local database")

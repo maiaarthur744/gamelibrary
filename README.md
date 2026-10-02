@@ -1,6 +1,6 @@
 # Game Library
 
-Uma página local que mostra **todos os seus jogos de várias lojas num lugar só**: Steam, GOG e Epic Games, mais uma lista manual para o que não tem API (Battle.net, Amazon Games etc.).
+Uma página local que mostra **todos os seus jogos de várias lojas num lugar só**: Steam, GOG e Epic Games, mais uma lista manual para o que não tem API (Battle.net, Amazon Games, consoles etc.).
 
 Não é um launcher: ele só lista o que você tem. O destaque é **agrupar o mesmo jogo comprado em lojas diferentes**, para você ver o que está repetido e onde.
 
@@ -107,6 +107,8 @@ A Epic não tem API pública de biblioteca. Por isso o projeto usa o [Legendary]
 
 A sessão da Epic é guardada pelo próprio Legendary, no perfil do seu usuário (fora da pasta do projeto).
 
+> **Na primeira vez, o `sync epic` pode precisar rodar mais de uma vez.** O Legendary busca os metadados de cada jogo que ainda não tem em cache, e o app limita cada sync a 100 chamadas. Quando o limite é atingido, o sync avisa e guarda o progresso; é só rodar `gamelibrary sync epic` de novo. Depois que o cache está preenchido, cada sync faz poucas chamadas.
+
 ### Battle.net, Amazon Games e outros (manual)
 
 Essas lojas não oferecem uma forma de listar a biblioteca via API, então você adiciona os jogos à mão. Há duas maneiras.
@@ -153,6 +155,37 @@ Outras opções:
 
 - `gamelibrary serve --port 9000` usa outra porta, e `--no-browser` não abre o navegador sozinho.
 - `gamelibrary list -s witcher` busca no terminal, e `-p gog` filtra por loja.
+
+## Chamadas externas
+
+O app foi feito para falar com as lojas o mínimo possível, e para você enxergar cada chamada.
+
+**Quando acontecem.** Só durante o `gamelibrary sync` e os comandos de login (`gog-login`, `epic-login`). Abrir a página (`serve`), buscar, filtrar, marcar status, escrever notas, adicionar jogos à mão e trocar capas são operações locais e **não fazem nenhuma chamada**. Isso é imposto no código (todo pedido passa por `gamelibrary/net.py`, que recusa chamadas fora do sync).
+
+**O que aparece no terminal.** Cada chamada gera uma linha com a loja, o endereço, o resultado e quanto do limite foi usado:
+
+```
+[net] steam  GET api.steampowered.com/IPlayerService/GetOwnedGames/v1/ -> 200 (0.4s) [1/20]
+[net] gog    GET embed.gog.com/account/getFilteredProducts -> 200 (0.6s) [1/20]
+[net] epic   GET launcher-public-service-prod06.ol.epicgames.com/launcher/api/public/assets/Windows -> 200 (0.5s) [3/100]
+[net] Resumo: steam 1, gog 1, epic 3. Total: 5 chamadas externas.
+```
+
+**Quantas chamadas, em geral**
+
+| Loja  | Por sync                                                                                                                                                            |
+| ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Steam | 1 (a lista de jogos). Só pergunta pelas capas de jogos novos: 1 chamada extra a cada 50 jogos cuja capa ainda não é conhecida. O primeiro sync gasta um pouco mais. |
+| GOG   | Algumas: uma por página da biblioteca, mais uma para renovar o login quando ele expira.                                                                             |
+| Epic  | Poucas (menos de 10) quando o cache do Legendary já está preenchido.                                                                                                |
+
+**Limites de segurança**
+
+- Há um teto de chamadas por loja em cada sync: Steam 20, GOG 20, Epic 100. Ao chegar no teto, o app para **antes** de enviar a próxima e avisa.
+- Os pedidos têm um intervalo mínimo de 0,3 s entre eles, sem rajadas.
+- Para mudar o teto: `GAMELIBRARY_MAX_REQUESTS=10 gamelibrary sync`.
+- **Epic na primeira vez:** o Legendary busca os metadados de cada jogo que ainda não tem em cache. Sozinho, ele faria centenas de chamadas de uma vez. Aqui isso é espalhado: cada sync faz no máximo 100, guarda o progresso, e você roda `gamelibrary sync epic` de novo até terminar. Depois disso o cache fica preenchido e os syncs seguintes são curtos.
+- `gamelibrary sync steam --refresh-covers` pergunta de novo pelas capas de todos os jogos (muitas chamadas; só use se as capas da Steam estiverem erradas).
 
 ## Como funciona
 
@@ -204,6 +237,7 @@ Se for compartilhar o projeto, **não envie esses arquivos**. Cada pessoa cria o
 - **GOG e Epic usam caminhos não oficiais.** A GOG usa os mesmos endpoints do site e do cliente GOG Galaxy, e a Epic depende do Legendary. Isso funciona hoje, mas pode quebrar sem aviso se as lojas mudarem algo.
 - **Battle.net não lista a conta inteira** na API pública, por isso é manual.
 - **Jogos de outras fontes na Epic:** a listagem inclui jogos resgatados de terceiros, mas eles podem aparecer sem link para a loja.
+- **Consoles (PlayStation, Switch, Xbox…) não têm integração:** as lojas de console não oferecem uma API que valha o risco para a sua conta. Adicione esses jogos à mão, pelo botão **+ Adicionar jogo** (escolha "Outra…" e digite, por exemplo, `playstation`).
 - **Horas jogadas** só existem para a Steam (e para o que você escrever no `manual.json`).
 
 ## Problemas comuns

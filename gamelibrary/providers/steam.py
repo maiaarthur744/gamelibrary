@@ -3,12 +3,21 @@ import os
 
 import httpx
 
+from .. import net, store
 from ..models import Game
 
 CDN = "https://cdn.cloudflare.steamstatic.com/steam/apps"
 STORE_ITEMS = "https://api.steampowered.com/IStoreBrowseService/GetItems/v1"
 ASSETS = "https://shared.akamai.steamstatic.com/store_item_assets"
 URL = "https://api.steampowered.com/IPlayerService/GetOwnedGames/v1/"
+
+
+def _known_covers() -> dict[int, str]:
+    """Covers found by earlier syncs. Their URLs are tied to the artwork, so they don't need asking again."""
+    rows = store.connect().execute(
+        "SELECT platform_id, cover_url FROM games WHERE platform = 'steam' AND cover_url LIKE ?", (f"{ASSETS}/%",)
+    )
+    return {int(r["platform_id"]): r["cover_url"] for r in rows}
 
 
 def _store_covers(appids: list[int]) -> dict[int, str]:
@@ -24,7 +33,7 @@ def _store_covers(appids: list[int]) -> dict[int, str]:
             "data_request": {"include_assets": True},
         }
         try:
-            resp = httpx.get(STORE_ITEMS, params={"input_json": json.dumps(payload)}, timeout=30)
+            resp = net.get(STORE_ITEMS, params={"input_json": json.dumps(payload)})
             resp.raise_for_status()
             items = resp.json()["response"]["store_items"]
         except (httpx.HTTPError, KeyError, ValueError):
@@ -37,13 +46,13 @@ def _store_covers(appids: list[int]) -> dict[int, str]:
     return covers
 
 
-def fetch_games() -> list[Game]:
+def fetch_games(refresh_covers: bool = False) -> list[Game]:
     key = os.environ.get("STEAM_API_KEY")
     steam_id = os.environ.get("STEAM_ID")
     if not key or not steam_id:
         raise RuntimeError("Set STEAM_API_KEY and STEAM_ID in .env")
 
-    resp = httpx.get(
+    resp = net.get(
         URL,
         params={
             "key": key,
@@ -52,7 +61,6 @@ def fetch_games() -> list[Game]:
             "include_played_free_games": 1,
             "format": "json",
         },
-        timeout=30,
     )
     resp.raise_for_status()
     games = resp.json().get("response", {}).get("games")
@@ -61,7 +69,9 @@ def fetch_games() -> list[Game]:
             "Steam returned no games. Is your profile's 'Game details' set to public?"
         )
 
-    store_covers = _store_covers([g["appid"] for g in games])
+    # Only games without a known cover are looked up: usually none, so a sync is a single request.
+    known = {} if refresh_covers else _known_covers()
+    store_covers = known | _store_covers([g["appid"] for g in games if g["appid"] not in known])
     return [
         Game(
             platform="steam",

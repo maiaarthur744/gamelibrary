@@ -2,8 +2,7 @@ import json
 import time
 from urllib.parse import parse_qs, urlencode, urlparse
 
-import httpx
-
+from .. import net
 from ..models import Game
 from ..store import DATA_DIR
 
@@ -62,11 +61,7 @@ def _save_token(data: dict) -> dict:
 
 
 def _token_request(**params: str) -> dict:
-    resp = httpx.get(
-        TOKEN_URL,
-        params={"client_id": CLIENT_ID, "client_secret": CLIENT_SECRET, **params},
-        timeout=30,
-    )
+    resp = net.get(TOKEN_URL, params={"client_id": CLIENT_ID, "client_secret": CLIENT_SECRET, **params})
     resp.raise_for_status()
     return _save_token(resp.json())
 
@@ -93,12 +88,7 @@ def fetch_games() -> list[Game]:
     games: list[Game] = []
     page, total_pages = 1, 1
     while page <= total_pages:
-        resp = httpx.get(
-            LIBRARY_URL,
-            params={"mediaType": 1, "page": page},
-            headers=headers,
-            timeout=30,
-        )
+        resp = net.get(LIBRARY_URL, params={"mediaType": 1, "page": page}, headers=headers)
         resp.raise_for_status()
         data = resp.json()
         total_pages = data.get("totalPages", 1)
