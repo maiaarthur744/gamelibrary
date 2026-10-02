@@ -16,6 +16,16 @@ LIBRARY_URL = "https://embed.gog.com/account/getFilteredProducts"
 TOKEN_PATH = DATA_DIR / "gog_token.json"
 
 
+def alt_cover(cover_url: str) -> str | None:
+    """The original artwork behind a vertical cover.
+
+    GOG derives `_glx_vertical_cover` by cropping the centre of a horizontal image, which
+    cuts the sides off for many older games. The bare image URL is the uncropped original.
+    """
+    suffix = "_glx_vertical_cover.webp"
+    return cover_url.removesuffix(suffix) + ".jpg" if cover_url.endswith(suffix) else None
+
+
 def login_url() -> str:
     query = urlencode(
         {

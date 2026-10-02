@@ -1,9 +1,10 @@
 import os
 import sqlite3
 import time
+from datetime import date
 from pathlib import Path
 
-from .models import Game
+from .models import Game, Meta
 
 # GAMELIBRARY_DATA_DIR lets tests run against a copy instead of the real library.
 DATA_DIR = Path(os.environ.get("GAMELIBRARY_DATA_DIR") or Path(__file__).resolve().parent.parent / "data")
@@ -42,6 +43,15 @@ CREATE TABLE IF NOT EXISTS ratings (
 CREATE TABLE IF NOT EXISTS notes (
     key  TEXT PRIMARY KEY,  -- grouping key
     note TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS covers (
+    key TEXT PRIMARY KEY,  -- grouping key
+    url TEXT NOT NULL      -- http(s) URL or /covers/<file> for an uploaded image
+);
+CREATE TABLE IF NOT EXISTS dates (
+    key      TEXT PRIMARY KEY,  -- grouping key
+    started  TEXT,              -- ISO dates (YYYY-MM-DD)
+    finished TEXT
 );
 DROP TABLE IF EXISTS splits;  -- first version keyed by title, which can't tell identical titles apart
 CREATE TABLE IF NOT EXISTS entry_splits (
@@ -94,7 +104,7 @@ def set_hidden(conn: sqlite3.Connection, key: str, title: str, hidden: bool) -> 
             conn.execute("DELETE FROM hidden WHERE key = ?", (key,))
 
 
-STATUSES = ("playing", "played", "backlog", "replay", "dropped", "multiplayer", "endless")
+STATUSES = ("playing", "played", "backlog", "replay", "dropped", "multiplayer", "endless", "unplayed")
 
 
 def all_status(conn: sqlite3.Connection) -> dict[str, list[str]]:
@@ -144,6 +154,62 @@ def set_note(conn: sqlite3.Connection, key: str, note: str) -> None:
             conn.execute("INSERT OR REPLACE INTO notes (key, note) VALUES (?, ?)", (key, note))
         else:
             conn.execute("DELETE FROM notes WHERE key = ?", (key,))
+
+
+def all_covers(conn: sqlite3.Connection) -> dict[str, str]:
+    return {r["key"]: r["url"] for r in conn.execute("SELECT key, url FROM covers")}
+
+
+def set_cover(conn: sqlite3.Connection, key: str, url: str | None) -> None:
+    if url is not None:
+        if not isinstance(url, str) or len(url) > 2000 or not url.startswith(("http://", "https://", "/covers/")):
+            raise ValueError("a capa precisa ser um link http(s) ou uma imagem enviada")
+    with conn:
+        if url is None:
+            conn.execute("DELETE FROM covers WHERE key = ?", (key,))
+        else:
+            conn.execute("INSERT OR REPLACE INTO covers (key, url) VALUES (?, ?)", (key, url))
+
+
+def all_dates(conn: sqlite3.Connection) -> dict[str, tuple[str | None, str | None]]:
+    return {r["key"]: (r["started"], r["finished"]) for r in conn.execute("SELECT key, started, finished FROM dates")}
+
+
+def set_dates(conn: sqlite3.Connection, key: str, started: str | None, finished: str | None) -> None:
+    def parse(value):
+        if not value:
+            return None
+        if not isinstance(value, str):
+            raise TypeError("date must be a string")
+        try:
+            return date.fromisoformat(value)
+        except ValueError:
+            raise ValueError("data inválida") from None
+
+    s, f = parse(started), parse(finished)
+    if s and f and f < s:
+        raise ValueError("a data de fim não pode ser anterior à de início")
+    with conn:
+        if not s and not f:
+            conn.execute("DELETE FROM dates WHERE key = ?", (key,))
+        else:
+            conn.execute(
+                "INSERT OR REPLACE INTO dates (key, started, finished) VALUES (?, ?, ?)",
+                (key, s.isoformat() if s else None, f.isoformat() if f else None),
+            )
+
+
+def load_meta(conn: sqlite3.Connection) -> Meta:
+    return Meta(
+        hidden=hidden_keys(conn),
+        tags=all_tags(conn),
+        status=all_status(conn),
+        ratings=all_ratings(conn),
+        notes=all_notes(conn),
+        covers=all_covers(conn),
+        dates=all_dates(conn),
+        splits=split_keys(conn),
+    )
 
 
 def entry_key(platform: str, platform_id: str) -> str:

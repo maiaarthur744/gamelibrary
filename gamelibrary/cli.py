@@ -4,7 +4,7 @@ import sys
 from dotenv import load_dotenv
 
 from . import server, store
-from .providers import PROVIDERS, epic, gog
+from .providers import PROVIDERS, epic, gog, manual
 
 
 def cmd_sync(args: argparse.Namespace) -> int:
@@ -13,18 +13,17 @@ def cmd_sync(args: argparse.Namespace) -> int:
     failed = False
     for name in names:
         try:
-            games = PROVIDERS[name]()
+            if name == "manual":  # entries carry their own platform (battlenet, amazon, ...)
+                count = manual.sync(conn)
+            else:
+                games = PROVIDERS[name]()
+                store.replace_platform(conn, name, games)
+                count = len(games)
         except Exception as e:  # keep going so one broken provider doesn't block the rest
             print(f"{name}: FAILED - {e}", file=sys.stderr)
             failed = True
             continue
-        if name == "manual":
-            # manual entries carry their own platform (battlenet, amazon, ...)
-            for platform in {g.platform for g in games}:
-                store.replace_platform(conn, platform, [g for g in games if g.platform == platform])
-        else:
-            store.replace_platform(conn, name, games)
-        print(f"{name}: {len(games)} games")
+        print(f"{name}: {count} games")
     return 1 if failed else 0
 
 

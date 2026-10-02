@@ -19,6 +19,7 @@
         --st-dropped: #b3402f;
         --st-multiplayer: #b02a7c;
         --st-endless: #5f8a1e;
+        --st-unplayed: #6b7a8c;
         --star: #d99a00;
         --steam: #2a475e;
         --gog: #8a3fc7;
@@ -42,6 +43,7 @@
           --st-dropped: #f0806e;
           --st-multiplayer: #ee7fc0;
           --st-endless: #a6d15c;
+          --st-unplayed: #9fb0c4;
           --star: #f5c04a;
           --steam: #66a3d6;
           --gog: #b77ee8;
@@ -67,7 +69,7 @@
           sans-serif;
       }
       main {
-        max-width: 960px;
+        max-width: 1280px;
         margin: 0 auto;
         padding: 24px 16px 64px;
       }
@@ -256,8 +258,8 @@
         padding: 8px 14px 8px 8px;
       }
       ul.grid {
-        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-        gap: 12px;
+        grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+        gap: 14px;
       }
       .card {
         all: unset;
@@ -265,6 +267,7 @@
         cursor: pointer;
         display: block;
         width: 100%;
+        height: 100%;
         background: var(--surface);
         border: 1px solid var(--border);
         border-radius: 10px;
@@ -299,14 +302,36 @@
         background: color-mix(in srgb, var(--surface) 88%, transparent);
       }
       .card .title {
-        display: block;
-        padding: 8px 10px;
+        /* margin, not padding: overflow:hidden clips at the padding edge, so padding
+           would let the clipped third line show through underneath. */
+        margin: 8px 10px;
         font-size: 13px;
         font-weight: 500;
+        line-height: 1.35;
+        min-height: 2.7em; /* always two lines, so cards in a row line up */
         display: -webkit-box;
         -webkit-line-clamp: 2;
         -webkit-box-orient: vertical;
         overflow: hidden;
+        overflow-wrap: anywhere;
+      }
+      /* Covers that aren't portrait: show the whole image over a blurred copy of itself. */
+      .card .cover.fit {
+        overflow: hidden;
+      }
+      .card .cover.fit::before {
+        content: "";
+        position: absolute;
+        inset: -16px;
+        background: var(--cover-bg) center / cover no-repeat;
+        filter: blur(14px) brightness(0.55);
+      }
+      .card .cover.fit img {
+        position: relative;
+        object-fit: contain;
+      }
+      .thumb.fit {
+        object-fit: contain;
       }
       dialog {
         background: var(--surface);
@@ -314,7 +339,7 @@
         border: 1px solid var(--border);
         border-radius: 12px;
         padding: 0;
-        width: min(520px, calc(100vw - 32px));
+        width: min(560px, calc(100vw - 32px));
       }
       dialog::backdrop {
         background: rgba(0, 0, 0, 0.5);
@@ -439,6 +464,120 @@
         color: var(--c);
         box-shadow: inset 0 0 0 1px var(--c);
       }
+      header {
+        justify-content: space-between;
+      }
+      .add-btn {
+        margin-left: auto;
+      }
+      .dates {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px 16px;
+        margin-bottom: 8px;
+        font-size: 13px;
+        color: var(--muted);
+      }
+      .dates label {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .date-input,
+      .cover-edit input[type="url"],
+      .add-form input,
+      .add-form select {
+        font: inherit;
+        font-size: 13px;
+        color: var(--text);
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 3px 8px;
+      }
+      .cover-edit {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 6px 10px;
+        margin-top: 10px;
+        font-size: 13px;
+        color: var(--muted);
+      }
+      .cover-edit input[type="url"] {
+        flex: 1 1 160px;
+        min-width: 0;
+      }
+      .cover-options {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px;
+        margin-top: 10px;
+        font-size: 13px;
+        color: var(--muted);
+      }
+      .cover-opt {
+        all: unset;
+        cursor: pointer;
+        border: 2px solid var(--border);
+        border-radius: 6px;
+        overflow: hidden;
+        background: var(--border);
+        line-height: 0;
+      }
+      .cover-opt[aria-pressed="true"] {
+        border-color: var(--accent);
+      }
+      .cover-opt:focus-visible {
+        outline: 2px solid var(--accent);
+      }
+      .cover-opt img {
+        height: 84px;
+        max-width: 150px;
+        object-fit: contain;
+      }
+      .add-form {
+        padding: 18px;
+        display: grid;
+        gap: 12px;
+      }
+      .add-form h2 {
+        margin: 0;
+        font-size: 18px;
+      }
+      .add-form .hint {
+        margin: 0;
+        font-size: 13px;
+        color: var(--muted);
+      }
+      .add-form label {
+        display: grid;
+        gap: 4px;
+        font-size: 13px;
+        color: var(--muted);
+      }
+      .add-form input,
+      .add-form select {
+        width: 100%;
+        font-size: 14px;
+        padding: 7px 10px;
+      }
+      .add-form .error {
+        margin: 0;
+        font-size: 13px;
+        color: var(--st-dropped);
+      }
+      .form-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 8px;
+      }
+      .chip.primary {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: var(--bg);
+      }
       .ratingline {
         display: block;
         padding: 0 10px 4px;
@@ -511,6 +650,7 @@
       <header>
         <h1>Game Library</h1>
         <div class="stats" id="stats"></div>
+        <button class="chip add-btn" id="addBtn">+ Adicionar jogo</button>
       </header>
 
       <div class="toolbar">
@@ -572,6 +712,39 @@
       <ul id="list"></ul>
     </main>
     <dialog id="dlg"></dialog>
+    <dialog id="addDlg">
+      <form id="addForm" class="add-form">
+        <h2>Adicionar jogo</h2>
+        <p class="hint">
+          Para lojas sem integração (Battle.net, Amazon Games…). O jogo é salvo
+          em data/manual.json.
+        </p>
+        <label
+          >Plataforma
+          <select id="addPlatform"></select
+        ></label>
+        <label id="addOtherWrap" hidden>
+          Nome da plataforma <input id="addOther" maxlength="30" />
+        </label>
+        <label>Título <input id="addTitle" required maxlength="200" /></label>
+        <label>
+          Link da capa (opcional)
+          <input id="addCover" type="url" placeholder="https://…" />
+        </label>
+        <label>
+          Horas jogadas (opcional)
+          <input id="addHours" type="number" min="0" step="any" />
+        </label>
+        <label>
+          Link da loja (opcional) <input id="addUrl" type="url" />
+        </label>
+        <p class="error" id="addError" role="alert" hidden></p>
+        <div class="form-actions">
+          <button type="button" class="chip" id="addCancel">Cancelar</button>
+          <button type="submit" class="chip primary">Adicionar</button>
+        </div>
+      </form>
+    </dialog>
 
     <script>
       const PLATFORM_NAMES = {
@@ -581,7 +754,8 @@
         battlenet: "Battle.net",
         amazon: "Amazon",
       };
-      const name = (p) => PLATFORM_NAMES[p] || p;
+      const name = (p) =>
+        PLATFORM_NAMES[p] || p.replace(/\b\w/g, (c) => c.toUpperCase());
       const color = (p) => `var(--${PLATFORM_NAMES[p] ? p : "other"})`;
       const esc = (s) =>
         String(s).replace(
@@ -612,6 +786,7 @@
         ["dropped", "Abandonado"],
         ["multiplayer", "Multiplayer/Co-op"],
         ["endless", "Sem fim"],
+        ["unplayed", "Não jogado"],
       ];
       const statusLabel = (k) => (STATUSES.find((s) => s[0] === k) || [])[1];
       let tagCase = new Map(); // lowercase -> spelling already in use
@@ -644,7 +819,8 @@
           .join("");
       }
 
-      const shown = () => groups.filter((g) => showHidden || !g.hidden);
+      // "Mostrar ocultos" swaps the list: only hidden games, not mixed with the others.
+      const shown = () => groups.filter((g) => g.hidden === showHidden);
 
       function renderStatusChips() {
         const counts = {};
@@ -725,6 +901,33 @@
         return `<img class="${cls}" loading="lazy" alt="" src="${esc(src)}" data-key="${esc(g.key)}" data-i="0">`;
       }
 
+      // Portrait covers fill the card. Anything wider is shown whole over a blurred backdrop.
+      function fitCover(img) {
+        const wide = img.naturalWidth / img.naturalHeight > 0.8;
+        img.classList.toggle("fit", wide);
+        const box = img.closest(".cover");
+        if (!box) return;
+        box.classList.toggle("fit", wide);
+        if (wide)
+          box.style.setProperty(
+            "--cover-bg",
+            `url(${JSON.stringify(img.currentSrc || img.src)})`,
+          );
+      }
+      document.addEventListener(
+        "load",
+        (e) => {
+          if (e.target instanceof HTMLImageElement && e.target.dataset.key)
+            fitCover(e.target);
+        },
+        true,
+      );
+      // Images already loaded (cache) may not fire "load" again after a re-render.
+      const fitLoadedCovers = () =>
+        document
+          .querySelectorAll("img[data-key]")
+          .forEach((img) => img.complete && img.naturalWidth && fitCover(img));
+
       // A cover that fails to load falls through to the next platform's cover, then to a placeholder.
       document.addEventListener(
         "error",
@@ -780,6 +983,25 @@
             "",
           )}${g.rating ? `<span class="n">${g.rating}/5</span>` : ""}</div>`;
         const note = `<textarea class="note-input" data-key="${esc(g.key)}" rows="3" maxlength="20000" placeholder="Anotações ou review…">${esc(g.note)}</textarea>`;
+        const dates = `<div class="dates">
+          <label>Início <input type="date" class="date-input" data-key="${esc(g.key)}" data-field="started" value="${esc(g.started || "")}" max="${esc(g.finished || "")}"></label>
+          <label>Fim <input type="date" class="date-input" data-key="${esc(g.key)}" data-field="finished" value="${esc(g.finished || "")}" min="${esc(g.started || "")}"></label></div>`;
+        const coverEdit = `<div class="cover-edit">
+          <span>Capa:</span>
+          <input type="url" class="cover-url" placeholder="Link da imagem…">
+          <button class="link-btn" data-action="cover-url" data-key="${esc(g.key)}">Usar link</button>
+          <label class="link-btn">Enviar arquivo<input type="file" class="cover-file" data-key="${esc(g.key)}" accept="image/png,image/jpeg,image/webp" hidden></label>
+          ${g.custom_cover ? `<button class="link-btn" data-action="cover-clear" data-key="${esc(g.key)}">Voltar à automática</button>` : ""}</div>`;
+        const options = [...new Set([...g.covers, ...g.alt_covers])];
+        const coverOptions =
+          options.length > 1
+            ? `<div class="cover-options"><span>Capas disponíveis:</span>${options
+                .map(
+                  (u) =>
+                    `<button class="cover-opt" data-action="cover-pick" data-key="${esc(g.key)}" data-url="${esc(u)}" aria-pressed="${u === g.covers[0]}" aria-label="Usar esta capa"><img src="${esc(u)}" alt="" loading="lazy"></button>`,
+                )
+                .join("")}</div>`
+            : "";
         const canSplit = g.entries.length > 1;
         const action = `<button class="hide-btn" data-action="${g.hidden ? "unhide" : "hide"}" data-key="${esc(g.key)}">
     ${g.hidden ? "Mostrar de novo" : "Ocultar da lista"}</button>`;
@@ -789,6 +1011,7 @@
         return (
           picker +
           rating +
+          dates +
           g.entries
             .map(
               (e) => `
@@ -797,6 +1020,7 @@
       <span class="t">${esc(e.title)} <span class="hours">${esc(name(e.platform))}</span></span>
       <span class="hours">${hours(e.playtime_minutes)}</span>
       ${e.url ? `<a href="${esc(e.url)}" target="_blank" rel="noopener">abrir</a>` : ""}
+      ${e.manual ? `<button class="link-btn" data-action="remove-manual" data-platform="${esc(e.platform)}" data-pid="${esc(e.platform_id)}" data-title="${esc(e.title)}">Remover jogo</button>` : ""}
       ${
         e.split
           ? `<button class="link-btn" data-action="unsplit" data-platform="${esc(e.platform)}" data-pid="${esc(e.platform_id)}">Desfazer separação</button>`
@@ -809,13 +1033,15 @@
             .join("") +
           tagEditor +
           note +
+          coverOptions +
+          coverEdit +
           action
         );
       }
 
       function render() {
         const open = new Set(
-          [...document.querySelectorAll("#list details[open]")].map(
+          [...document.querySelectorAll("#list > li > details[open]")].map(
             (d) => d.dataset.key,
           ),
         );
@@ -825,14 +1051,14 @@
         $("list").className = view === "grid" ? "grid" : "";
         if (!list.length) {
           $("list").innerHTML =
-            '<div class="empty">Nenhum jogo encontrado.</div>';
+            `<div class="empty">${showHidden ? "Nenhum jogo oculto." : "Nenhum jogo encontrado."}</div>`;
           return;
         }
         $("list").innerHTML = list
           .map((g) =>
             view === "grid"
               ? `
-    <li class="${g.hidden ? "is-hidden" : ""}"><button class="card" data-key="${esc(g.key)}">
+    <li class="${g.hidden ? "is-hidden" : ""}"><button class="card" data-key="${esc(g.key)}" title="${esc(g.title)}">
       <div class="cover">${coverHtml(g, "img")}${g.statuses.length ? `<div class="status-stack">${statusPills(g)}</div>` : ""}<div class="badges">${badgesHtml(g)}</div></div>
       <span class="title">${esc(g.title)}</span>
       ${g.rating || g.note ? `<span class="ratingline">${"★".repeat(g.rating || 0)}${g.note ? ` <span title="Tem anotações">✎</span>` : ""}</span>` : ""}
@@ -852,6 +1078,7 @@
     </details></li>`,
           )
           .join("");
+        fitLoadedCovers();
       }
 
       function fillDialog(g) {
@@ -864,6 +1091,7 @@
       <button class="close" aria-label="Fechar">✕</button>
     </div>
     <div class="entries">${entriesHtml(g)}</div>`;
+        fitLoadedCovers();
       }
 
       function openDialog(g) {
@@ -906,6 +1134,25 @@
           })
         ).ok;
 
+      // Like post(), but also returns the server's message so it can be shown to the user.
+      const api = async (path, body) => {
+        const r = await fetch(path, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        return { ok: r.ok, error: r.ok ? "" : await r.text() };
+      };
+      const failMessage = (res) =>
+        res.error && res.error !== "bad request"
+          ? res.error
+          : "Não foi possível salvar.";
+
+      async function reloadKeepDialog(key) {
+        await load();
+        if ($("dlg").open && byKey.has(key)) fillDialog(byKey.get(key));
+      }
+
       async function saveTags(g, tags) {
         if (!(await post("/api/tags", { key: g.key, tags }))) return;
         g.tags = tags;
@@ -927,6 +1174,39 @@
             g,
             g.tags.filter((t) => t !== btn.dataset.tag),
           );
+        }
+        if (action === "cover-url") {
+          const url = btn
+            .closest(".cover-edit")
+            .querySelector(".cover-url")
+            .value.trim();
+          if (!url) return alert("Cole o link de uma imagem.");
+          const res = await api("/api/cover", { key: g.key, url });
+          if (!res.ok) return alert(failMessage(res));
+          return reloadKeepDialog(g.key);
+        }
+        if (action === "cover-pick") {
+          const res = await api("/api/cover", {
+            key: g.key,
+            url: btn.dataset.url,
+          });
+          if (!res.ok) return alert(failMessage(res));
+          return reloadKeepDialog(g.key);
+        }
+        if (action === "cover-clear") {
+          if (!(await post("/api/cover", { key: g.key, url: null }))) return;
+          return reloadKeepDialog(g.key);
+        }
+        if (action === "remove-manual") {
+          if (!confirm(`Remover "${btn.dataset.title}" da sua lista manual?`))
+            return;
+          const res = await api("/api/manual/remove", {
+            platform: btn.dataset.platform,
+            platform_id: btn.dataset.pid,
+          });
+          if (!res.ok) return alert(failMessage(res));
+          if ($("dlg").open) $("dlg").close();
+          return load();
         }
         if (action === "rate") {
           const n = Number(btn.dataset.rating);
@@ -1042,6 +1322,100 @@
         flushNote();
         render(); // refresh the note/rating markers on the cards
       });
+      // Start/end dates save as soon as a date is picked. No re-render, so the picker keeps focus.
+      document.addEventListener("change", async (e) => {
+        const input = e.target;
+        if (input.classList.contains("date-input")) {
+          const g = byKey.get(input.dataset.key);
+          const box = input.closest(".dates");
+          const field = (f) => box.querySelector(`[data-field="${f}"]`);
+          const started = field("started").value || null;
+          const finished = field("finished").value || null;
+          const res = await api("/api/dates", {
+            key: g.key,
+            started,
+            finished,
+          });
+          if (!res.ok) {
+            alert(failMessage(res));
+            field("started").value = g.started || "";
+            field("finished").value = g.finished || "";
+            return;
+          }
+          g.started = started;
+          g.finished = finished;
+          field("started").max = finished || "";
+          field("finished").min = started || "";
+        } else if (input.classList.contains("cover-file")) {
+          const file = input.files[0];
+          if (!file) return;
+          if (file.size > 5 * 1024 * 1024)
+            return alert("A imagem tem mais de 5 MB.");
+          const dataUrl = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+          });
+          const key = input.dataset.key;
+          const res = await api("/api/cover/upload", {
+            key,
+            data_url: dataUrl,
+          });
+          if (!res.ok) return alert(failMessage(res));
+          reloadKeepDialog(key);
+        }
+      });
+
+      // ---- add a game by hand ----
+      const AUTOMATIC = new Set(["steam", "gog", "epic"]);
+      function openAddDialog() {
+        const known = new Set(["battlenet", "amazon"]);
+        for (const g of groups)
+          for (const p of g.platforms) if (!AUTOMATIC.has(p)) known.add(p);
+        $("addPlatform").innerHTML =
+          [...known]
+            .map((p) => `<option value="${esc(p)}">${esc(name(p))}</option>`)
+            .join("") + '<option value="__other">Outra…</option>';
+        $("addForm").reset();
+        $("addOtherWrap").hidden = true;
+        $("addError").hidden = true;
+        $("addDlg").showModal();
+        $("addTitle").focus();
+      }
+      $("addBtn").addEventListener("click", openAddDialog);
+      $("addCancel").addEventListener("click", () => $("addDlg").close());
+      $("addPlatform").addEventListener("change", () => {
+        const other = $("addPlatform").value === "__other";
+        $("addOtherWrap").hidden = !other;
+        $("addOther").required = other;
+        if (other) $("addOther").focus();
+      });
+      $("addForm").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const platform =
+          $("addPlatform").value === "__other"
+            ? $("addOther").value
+            : $("addPlatform").value;
+        const res = await api("/api/manual/add", {
+          platform,
+          title: $("addTitle").value,
+          cover_url: $("addCover").value,
+          playtime_hours: $("addHours").value,
+          url: $("addUrl").value,
+        });
+        if (!res.ok) {
+          $("addError").textContent = failMessage(res);
+          $("addError").hidden = false;
+          return;
+        }
+        $("addDlg").close();
+        load();
+      });
+      $("addDlg").addEventListener("click", (e) => {
+        if (e.target === $("addDlg")) $("addDlg").close();
+      });
+
       $("search").addEventListener("input", render);
       $("sort").addEventListener("change", render);
       $("dupOnly").addEventListener("click", (e) => {

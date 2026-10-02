@@ -6,14 +6,16 @@ Não é um launcher: ele só lista o que você tem. O destaque é **agrupar o me
 
 Tudo roda na sua máquina. Seus dados ficam em uma pasta local e nada é enviado para servidor nenhum (além das chamadas às próprias lojas).
 
-## O que dá para fazer
+## Funcionalidades
 
 - Ver a biblioteca unificada, em **grade com capas** ou em **lista**
 - Ver quais jogos estão em **mais de uma loja**
 - Filtrar por loja
 - Buscar por nome ou tag e ordenar por nome, plataformas, horas jogadas ou jogado recentemente
-- Marcar **status** (um jogo pode ter vários ao mesmo tempo): Jogando, Jogado, Para jogar, Para jogar novamente, Abandonado, Multiplayer/Co-op e Sem fim
-- Dar uma **nota de 1 a 5 estrelas** e escrever **anotações ou um review** de cada jogo
+- Marcar **status** (um jogo pode ter vários ao mesmo tempo): Jogando, Jogado, Para jogar, Para jogar novamente, Abandonado, Multiplayer/Co-op, Sem fim e Não jogado
+- Dar uma **nota de 1 a 5 estrelas**, escrever **anotações ou um review** e registrar a **data de início e de fim** de cada jogo
+- **Adicionar jogos manualmente** pela interface, sem editar os arquivos na mão
+- **Trocar a capa** de qualquer jogo por um link ou por uma imagem do seu computador
 - Criar **tags** com os nomes que quiser e filtrar por elas
 - **Ocultar** jogos que você não quer ver
 - **Separar** jogos que foram agrupados por engano
@@ -21,7 +23,6 @@ Tudo roda na sua máquina. Seus dados ficam em uma pasta local e nada é enviado
 ## Requisitos
 
 - **Python 3.11 ou mais novo** (`python3 --version` para conferir)
-- Um navegador
 - Contas nas lojas que você quer listar
 - Para a Steam: uma chave de API gratuita
 
@@ -57,7 +58,7 @@ Você não precisa configurar todas as lojas. Conecte só as que usa e rode o `s
 
    ```
    STEAM_API_KEY=sua_chave_aqui
-   STEAM_ID=76561198000000000
+   STEAM_ID=seu_steam_ID_aqui
    ```
 
 5. Rode:
@@ -108,36 +109,33 @@ A sessão da Epic é guardada pelo próprio Legendary, no perfil do seu usuário
 
 ### Battle.net, Amazon Games e outros (manual)
 
-Essas lojas não oferecem uma forma útil de listar a biblioteca, então você escreve a lista à mão.
+Essas lojas não oferecem uma forma de listar a biblioteca via API, então você adiciona os jogos à mão. Há duas maneiras.
 
-1. Copie o modelo:
+**Pela interface.** Abra o app e clique em **+ Adicionar jogo**. Escolha a plataforma (ou "Outra…" para digitar o nome de uma nova), informe o título e, se quiser, o link da capa, as horas jogadas e o link da loja. O jogo é gravado em `data/manual.json` e aparece na hora, sem precisar rodar `sync`. Para apagar um jogo adicionado assim, abra o jogo e clique em **Remover jogo** ao lado da licença.
 
-   ```bash
-   cp data/manual.example.json data/manual.json
-   ```
+**Editando o arquivo.** Se preferir, copie o modelo e edite:
 
-2. Edite o `data/manual.json`. Cada item é um jogo:
+```bash
+cp data/manual.example.json data/manual.json
+```
 
-   ```json
-   [
-     {
-       "platform": "battlenet",
-       "title": "Diablo IV",
-       "cover_url": "https://exemplo.com/diablo4.jpg",
-       "playtime_minutes": 1200,
-       "url": "https://..."
-     }
-   ]
-   ```
+```json
+[
+  {
+    "platform": "battlenet",
+    "title": "Diablo IV",
+    "cover_url": "https://exemplo.com/diablo4.jpg",
+    "playtime_minutes": 1200,
+    "url": "https://..."
+  }
+]
+```
 
-   - `platform` e `title` são obrigatórios. `battlenet` e `amazon` já têm nome e cor próprios na interface. Qualquer outro nome funciona, com uma cor cinza.
-   - `cover_url` (link de uma imagem), `playtime_minutes`, `url` e `platform_id` são opcionais.
+- `platform` e `title` são obrigatórios. `battlenet` e `amazon` já têm nome e cor próprios na interface. Qualquer outro nome funciona, com uma cor cinza.
+- `steam`, `gog` e `epic` **não podem** ser usados aqui, porque essas lojas são sincronizadas pela própria API.
+- `cover_url` (link de uma imagem), `playtime_minutes`, `url` e `platform_id` são opcionais.
 
-3. Rode:
-
-   ```bash
-   gamelibrary sync manual
-   ```
+Depois de editar o arquivo à mão, rode `gamelibrary sync manual` e recarregue a página.
 
 ## Usando
 
@@ -169,9 +167,13 @@ manual.json ───────────┘
 - O **agrupamento** (`gamelibrary/grouping.py`) compara os títulos ignorando ™, ®, acentos, pontuação e o "The" do início, e descarta sufixos de edição como "Game of the Year Edition", "Definitive Edition" e "Director's Cut".
 - O servidor (`gamelibrary/server.py`) só aceita conexões da própria máquina e serve a página em `gamelibrary/static/index.html`, sem nenhuma etapa de build.
 
+### Capas
+
+As capas vêm das próprias lojas: Steam, GOG e Epic. Se uma capa vier cortada, abra o jogo e escolha outra em **Capas disponíveis**. Se um jogo ficar sem capa, ou se você preferir outra, use a linha **Capa**: cole o link de uma imagem e clique em **Usar link**, ou use **Enviar arquivo** para mandar uma imagem do seu computador (PNG, JPG ou WebP, até 5 MB; o site [SteamGridDB](https://www.steamgriddb.com) tem boas capas). **Voltar à automática** desfaz a troca. Imagens enviadas ficam em `data/covers/`.
+
 ### Quando o agrupamento erra
 
-Como a comparação é só pelo título, às vezes dois jogos diferentes são juntados, ou o mesmo jogo fica separado.
+Como a comparação é só pelo título, às vezes dois jogos diferentes são agrupados, ou o mesmo jogo fica separado.
 
 - **Juntou jogos diferentes:** abra o jogo e clique em **Separar** na licença errada. Ela vira um card próprio. **Desfazer separação** agrupa de novo. Vale na hora, sem precisar de `sync`.
 - **Não juntou o mesmo jogo:** crie o arquivo `data/aliases.json`, associando um título a outro:
@@ -186,13 +188,14 @@ Tags, status, nota, anotações e ocultação ficam ligados ao grupo. Um card cr
 
 Tudo o que é seu fica fora do controle de versão (`.gitignore`):
 
-| Arquivo               | Conteúdo                                                             |
-| --------------------- | -------------------------------------------------------------------- |
-| `.env`                | chave da Steam e SteamID                                             |
-| `data/library.db`     | biblioteca, status, notas, reviews, tags, jogos ocultos e separações |
-| `data/gog_token.json` | token de login da GOG                                                |
-| `data/manual.json`    | sua lista manual                                                     |
-| `data/aliases.json`   | junções manuais de títulos                                           |
+| Arquivo               | Conteúdo                                                                    |
+| --------------------- | --------------------------------------------------------------------------- |
+| `.env`                | chave da Steam e SteamID                                                    |
+| `data/library.db`     | biblioteca, status, notas, reviews, datas, tags, jogos ocultos e separações |
+| `data/gog_token.json` | token de login da GOG                                                       |
+| `data/manual.json`    | sua lista manual                                                            |
+| `data/covers/`        | imagens de capa que você enviou                                             |
+| `data/aliases.json`   | junções manuais de títulos                                                  |
 
 Se for compartilhar o projeto, **não envie esses arquivos**. Cada pessoa cria os próprios, seguindo os passos acima.
 

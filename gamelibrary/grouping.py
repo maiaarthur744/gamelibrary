@@ -4,6 +4,8 @@ import re
 import unicodedata
 from collections import defaultdict
 
+from .models import Meta
+from .providers import gog
 from .store import DATA_DIR, entry_key
 
 ALIASES_PATH = DATA_DIR / "aliases.json"
@@ -19,6 +21,10 @@ _EDITION_SUFFIXES = [
     re.compile(r" directors cut$"),
     re.compile(r" edition$"),
 ]
+
+
+# Platforms that can offer a second look at an entry's cover (see gog.alt_cover).
+_ALT_COVERS = {"gog": gog.alt_cover}
 
 
 def _clean_title(title: str) -> str:
@@ -56,19 +62,12 @@ def _load_aliases() -> dict[str, str]:
     return {normalize(k): normalize(v) for k, v in raw.items()}
 
 
-def group_games(
-    rows,
-    hidden: set[str] = frozenset(),
-    tags: dict[str, list[str]] | None = None,
-    status: dict[str, list[str]] | None = None,
-    splits: set[str] = frozenset(),
-    ratings: dict[str, int] | None = None,
-    notes: dict[str, str] | None = None,
-) -> list[dict]:
+def group_games(rows, meta: Meta | None = None) -> list[dict]:
+    meta = meta or Meta()
     aliases = _load_aliases()
     buckets: dict[str, list] = defaultdict(list)
     for r in rows:
-        if entry_key(r["platform"], r["platform_id"]) in splits:
+        if entry_key(r["platform"], r["platform_id"]) in meta.splits:
             # Pulled out of its auto-group by the user. Licenses split from the same title
             # (e.g. on two stores) still end up together in the new group.
             buckets["=" + strict_key(r["title"])].append(r)
@@ -81,25 +80,39 @@ def group_games(
         entries.sort(key=lambda e: e["platform"])
         playtimes = [e["playtime_minutes"] for e in entries if e["playtime_minutes"]]
         played = [e["last_played"] for e in entries if e["last_played"]]
+        started, finished = meta.dates.get(key, (None, None))
+        covers = [e["cover_url"] for e in entries if e["cover_url"]]
+        if key in meta.covers:  # the user's own cover goes first; automatic ones stay as fallback
+            covers.insert(0, meta.covers[key])
+        alternatives = [
+            alt
+            for e in entries
+            if e["cover_url"] and e["platform"] in _ALT_COVERS and (alt := _ALT_COVERS[e["platform"]](e["cover_url"]))
+        ]
         groups.append(
             {
                 "key": key,
-                "hidden": key in hidden,
-                "tags": (tags or {}).get(key, []),
-                "statuses": (status or {}).get(key, []),
-                "rating": (ratings or {}).get(key),
-                "note": (notes or {}).get(key, ""),
+                "hidden": key in meta.hidden,
+                "tags": meta.tags.get(key, []),
+                "statuses": meta.status.get(key, []),
+                "rating": meta.ratings.get(key),
+                "note": meta.notes.get(key, ""),
+                "started": started,
+                "finished": finished,
+                "custom_cover": key in meta.covers,
                 "title": min((_clean_title(e["title"]) for e in entries), key=lambda s: (len(s), s)),
                 "platforms": sorted({e["platform"] for e in entries}),
                 "playtime_minutes": sum(playtimes) if playtimes else None,
                 "last_played": max(played) if played else None,
-                "covers": [e["cover_url"] for e in entries if e["cover_url"]],
+                "covers": covers,
+                "alt_covers": [u for u in dict.fromkeys(alternatives) if u not in covers],
                 "entries": [
                     {
                         "platform": e["platform"],
                         "title": e["title"],
                         "platform_id": e["platform_id"],
-                        "split": entry_key(e["platform"], e["platform_id"]) in splits,
+                        "split": entry_key(e["platform"], e["platform_id"]) in meta.splits,
+                        "manual": entry_key(e["platform"], e["platform_id"]) in meta.manual,
                         "playtime_minutes": e["playtime_minutes"],
                         "url": e["url"],
                     }
