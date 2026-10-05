@@ -1,6 +1,7 @@
 """Group the same game owned on several platforms into one entry."""
 import json
 import re
+import sys
 import unicodedata
 from collections import defaultdict
 
@@ -54,17 +55,82 @@ def strict_key(title: str) -> str:
     return normalize(title, strip_editions=False)
 
 
-def _load_aliases() -> dict[str, str]:
-    """data/aliases.json: {"Title as it appears": "Title it should be grouped with"}."""
+_warned: set[str] = set()
+
+
+def _alias_pairs(raw) -> list[tuple[str, str]]:
+    """Accepts {"A": "B", ...}, a list of such objects, and a list as the value: {"A": ["B", "C"]}."""
+    objects = [raw] if isinstance(raw, dict) else raw
+    if not isinstance(objects, list) or not all(isinstance(o, dict) for o in objects):
+        raise ValueError('esperado {"Título": "Outro título"} ou uma lista de objetos assim')
+    pairs = []
+    for key, value in (item for o in objects for item in o.items()):
+        values = value if isinstance(value, list) else [value]
+        if not isinstance(key, str) or not values or not all(isinstance(v, str) for v in values):
+            raise ValueError("os dois lados de cada junção precisam ser texto (ou uma lista de textos à direita)")
+        pairs += [(key, v) for v in values]
+    return pairs
+
+
+def _build_aliases(pairs: list[tuple[str, str]]) -> tuple[dict[str, str], set[str]]:
+    """Turn the file's pairs into ("this title's key -> the key of the group it joins", the main titles).
+
+    "A": "B"        A joins B's group (B is the main one, as before).
+    "A" listing several titles, whether repeated or as a list: A is the main one and they join A's group.
+    The main title keeps its key, so the tags, status and notes you gave it stay attached.
+    """
+    targets: dict[str, list[str]] = {}
+    for source, target in pairs:
+        s, t = normalize(source), normalize(target)
+        if s != t and t not in targets.setdefault(s, []):
+            targets[s].append(t)
+    aliases = {s: ts[0] for s, ts in targets.items() if len(ts) == 1}
+    main_titles = {s for s, ts in targets.items() if len(ts) > 1}
+    for source in main_titles:
+        aliases.update({t: source for t in targets[source]})
+    return aliases, main_titles
+
+
+def _resolve(key: str, aliases: dict[str, str]) -> str:
+    """Follow chains (A joins B, B joins C: all end up in C). A loop in the file ends in one stable group."""
+    path = [key]
+    while path[-1] in aliases:
+        nxt = aliases[path[-1]]
+        if nxt in path:
+            return min(path[path.index(nxt):])  # a cycle: every member agrees on one key
+        path.append(nxt)
+    return path[-1]
+
+
+def _load_aliases() -> tuple[dict[str, str], set[str]]:
+    """data/aliases.json, see _alias_pairs and _build_aliases for what it may contain.
+
+    A broken file is reported once in the terminal and ignored, instead of taking the whole page down.
+    """
     if not ALIASES_PATH.exists():
-        return {}
-    raw = json.loads(ALIASES_PATH.read_text(encoding="utf-8"))
-    return {normalize(k): normalize(v) for k, v in raw.items()}
+        return {}, set()
+    try:
+        pairs = _alias_pairs(json.loads(ALIASES_PATH.read_text(encoding="utf-8")))
+    except ValueError as e:  # includes json.JSONDecodeError
+        message = f"[aviso] {ALIASES_PATH.name} foi ignorado: {e}"
+        if message not in _warned:
+            _warned.add(message)
+            print(message, file=sys.stderr)
+        return {}, set()
+    return _build_aliases(pairs)
+
+
+def _group_title(key: str, entries: list, main_titles: set[str]) -> str:
+    """The shortest license title, except that a main title from aliases.json names its own group
+    (otherwise "Dawn of War - Anniversary Edition" absorbing its expansions would be called "Soulstorm")."""
+    titles = [(_clean_title(e["title"]), normalize(e["title"])) for e in entries]
+    own = [t for t, n in titles if key in main_titles and n == key]
+    return min(own or [t for t, _ in titles], key=lambda s: (len(s), s))
 
 
 def group_games(rows, meta: Meta | None = None) -> list[dict]:
     meta = meta or Meta()
-    aliases = _load_aliases()
+    aliases, main_titles = _load_aliases()
     buckets: dict[str, list] = defaultdict(list)
     for r in rows:
         if entry_key(r["platform"], r["platform_id"]) in meta.splits:
@@ -72,8 +138,7 @@ def group_games(rows, meta: Meta | None = None) -> list[dict]:
             # (e.g. on two stores) still end up together in the new group.
             buckets["=" + strict_key(r["title"])].append(r)
         else:
-            key = normalize(r["title"])
-            buckets[aliases.get(key, key)].append(r)
+            buckets[_resolve(normalize(r["title"]), aliases)].append(r)
 
     groups = []
     for key, entries in buckets.items():
@@ -103,7 +168,7 @@ def group_games(rows, meta: Meta | None = None) -> list[dict]:
                 "started": started,
                 "finished": finished,
                 "custom_cover": key in meta.covers,
-                "title": min((_clean_title(e["title"]) for e in entries), key=lambda s: (len(s), s)),
+                "title": _group_title(key, entries, main_titles),
                 "platforms": sorted({e["platform"] for e in entries}),
                 "playtime_minutes": typed_minutes if typed_minutes is not None else auto_minutes,
                 "playtime_auto": auto_minutes,

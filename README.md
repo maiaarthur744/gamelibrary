@@ -255,6 +255,35 @@ Como a comparação é só pelo título, às vezes dois jogos diferentes são ag
   { "Título em uma loja": "Título na outra loja" }
   ```
 
+  Também vale uma lista de pares, se você achar mais fácil de ler:
+
+  ```json
+  [
+    { "System Shock 2 (1999)": "System Shock 2: 25th Anniversary Remaster" },
+    { "The Witcher 3: Wild Hunt": "The Witcher 3: Wild Hunt — Remastered" }
+  ]
+  ```
+
+  **Para onde cada junção vai.** Em `"A": "B"`, o jogo A entra no grupo do jogo B, e o grupo continua sendo o de B: as tags, o status e as notas de B ficam. Cadeias funcionam (`"A": "B"` e `"B": "C"` juntam os três).
+
+  **Um jogo principal com vários filhos** (por exemplo, um jogo base e as expansões que a Steam lista à parte): escreva o principal à esquerda com todos os outros, de um destes dois jeitos equivalentes:
+
+  ```json
+  { "Dawn of War - Anniversary Edition": ["Dawn of War - Dark Crusade", "Dawn of War - Winter Assault", "Dawn of War - Soulstorm"] }
+  ```
+
+  ```json
+  [
+    { "Dawn of War - Anniversary Edition": "Dawn of War - Dark Crusade" },
+    { "Dawn of War - Anniversary Edition": "Dawn of War - Winter Assault" },
+    { "Dawn of War - Anniversary Edition": "Dawn of War - Soulstorm" }
+  ]
+  ```
+
+  A regra é: **quando um título aparece à esquerda com vários outros, ele é o principal**. O grupo fica com o nome e as tags/status/notas dele, e os outros entram nele. (Um título só pode ter um destino por vez quando está sozinho: repetir `"A"` à esquerda apontando para vários vira "A é o principal".) As tags e o status que os jogos absorvidos já tinham não são somados ao do principal: continuam guardados, mas não aparecem enquanto estiverem juntos.
+
+  O arquivo é lido a cada vez que a página carrega, então basta recarregar. Se ele estiver com erro (JSON inválido ou formato errado), o app avisa uma vez no terminal, ignora o arquivo e continua funcionando.
+
 Tags, status, nota, anotações e ocultação ficam ligados ao grupo. Um card criado ao separar começa sem eles.
 
 ## Onde ficam seus dados
