@@ -55,7 +55,7 @@ def _save_token(data: dict) -> dict:
         "expires_at": int(time.time()) + int(data.get("expires_in", 3600)) - 60,
     }
     DATA_DIR.mkdir(exist_ok=True)
-    TOKEN_PATH.write_text(json.dumps(token))
+    TOKEN_PATH.write_text(json.dumps(token), encoding="utf-8")
     TOKEN_PATH.chmod(0o600)
     return token
 
@@ -77,7 +77,7 @@ def login(code_or_url: str) -> None:
 def _access_token() -> str:
     if not TOKEN_PATH.exists():
         raise RuntimeError("Not logged in to GOG. Run: gamelibrary gog-login")
-    token = json.loads(TOKEN_PATH.read_text())
+    token = json.loads(TOKEN_PATH.read_text(encoding="utf-8"))
     if token["expires_at"] <= time.time():
         token = _token_request(grant_type="refresh_token", refresh_token=token["refresh_token"])
     return token["access_token"]

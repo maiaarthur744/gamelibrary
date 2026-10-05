@@ -58,7 +58,7 @@ def _load_aliases() -> dict[str, str]:
     """data/aliases.json: {"Title as it appears": "Title it should be grouped with"}."""
     if not ALIASES_PATH.exists():
         return {}
-    raw = json.loads(ALIASES_PATH.read_text())
+    raw = json.loads(ALIASES_PATH.read_text(encoding="utf-8"))
     return {normalize(k): normalize(v) for k, v in raw.items()}
 
 

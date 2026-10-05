@@ -14,13 +14,13 @@ ALIASES = {"battle.net": "battlenet", "battle net": "battlenet", "amazon games":
 def load_entries() -> list[dict]:
     if not MANUAL_PATH.exists():
         return []
-    return json.loads(MANUAL_PATH.read_text())
+    return json.loads(MANUAL_PATH.read_text(encoding="utf-8"))
 
 
 def _save(entries: list[dict]) -> None:
     DATA_DIR.mkdir(exist_ok=True)
     tmp = MANUAL_PATH.with_suffix(".json.tmp")
-    tmp.write_text(json.dumps(entries, indent=2, ensure_ascii=False) + "\n")
+    tmp.write_text(json.dumps(entries, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     tmp.replace(MANUAL_PATH)
 
 

@@ -1,7 +1,10 @@
 import argparse
+import contextlib
+import re
 import sys
+from pathlib import Path
 
-from dotenv import load_dotenv
+from dotenv import load_dotenv, set_key
 
 from . import net, server, store
 from .providers import PROVIDERS, epic, gog, manual
@@ -37,6 +40,31 @@ def cmd_list(args: argparse.Namespace) -> int:
         hours = f"{r['playtime_minutes'] / 60:.1f}h" if r["playtime_minutes"] else "-"
         print(f"{r['platform']:<10} {r['title']:<50} {hours:>8}")
     print(f"\n{len(rows)} games")
+    return 0
+
+
+# Next to .env.example: this is where load_dotenv() looks for it too.
+ENV_PATH = Path(__file__).resolve().parent.parent / ".env"
+
+
+def cmd_steam_setup(_: argparse.Namespace) -> int:
+    print("1. Gere uma chave em https://steamcommunity.com/dev/apikey (qualquer domínio serve, por exemplo localhost).")
+    print("2. Descubra o seu SteamID64 (17 números) em https://steamid.io.")
+    print("3. No Steam, deixe 'Detalhes dos jogos' como Público (Perfil > Editar perfil > Privacidade).\n")
+    key = input("Chave da API (32 letras e números): ").strip()
+    steam_id = input("SteamID64 (17 números): ").strip()
+    if not re.fullmatch(r"[0-9A-Fa-f]{32}", key):
+        print("A chave precisa ter 32 caracteres (números e letras de A a F). Nada foi salvo.", file=sys.stderr)
+        return 1
+    if not re.fullmatch(r"\d{17}", steam_id):
+        print("O SteamID64 precisa ter 17 números. Nada foi salvo.", file=sys.stderr)
+        return 1
+    ENV_PATH.touch(exist_ok=True)
+    set_key(str(ENV_PATH), "STEAM_API_KEY", key, quote_mode="never")  # other lines in the file are kept
+    set_key(str(ENV_PATH), "STEAM_ID", steam_id, quote_mode="never")
+    with contextlib.suppress(OSError):  # the key is a secret; not meaningful on every system
+        ENV_PATH.chmod(0o600)
+    print("Salvo. Agora sincronize a Steam para trazer os seus jogos.")
     return 0
 
 
@@ -76,6 +104,9 @@ def main() -> int:
     p.add_argument("-p", "--platform")
     p.add_argument("-s", "--search")
     p.set_defaults(func=cmd_list)
+
+    p = sub.add_parser("steam-setup", help="save your Steam API key and SteamID")
+    p.set_defaults(func=cmd_steam_setup)
 
     p = sub.add_parser("gog-login", help="authenticate with GOG")
     p.set_defaults(func=cmd_gog_login)

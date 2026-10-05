@@ -27,9 +27,39 @@ Tudo roda na sua máquina. Seus dados ficam em uma pasta local e nada é enviado
 - Contas nas lojas que você quer listar
 - Para a Steam: uma chave de API gratuita
 
-Foi desenvolvido e testado no **macOS**. Deve funcionar em Linux e Windows, mas não foi testado lá.
+Foi desenvolvido e testado no **macOS**. O `GameLibrary.command` (Mac/Linux) foi testado numa instalação limpa. O `GameLibrary.bat` (Windows) foi conferido por testes automáticos de sintaxe, mas **ainda não foi executado num Windows de verdade**: se algo falhar, copie a mensagem de erro.
 
-## Instalação
+## Instalação sem terminal
+
+Há um arquivo que instala tudo sozinho e abre um menu, então não precisa digitar comandos:
+
+- **Windows:** `GameLibrary.bat`
+- **Mac / Linux:** `GameLibrary.command`
+
+**Passo a passo (Windows)**
+
+1. Instale o **Python 3.11 ou mais novo** em <https://www.python.org/downloads/windows/>. Na primeira tela do instalador, **marque "Add python.exe to PATH"**.
+2. Baixe o projeto, extraia o zip numa pasta que você vá manter e abra a pasta.
+3. Dê dois cliques em `GameLibrary.bat`. Se o Windows perguntar se confia no arquivo, escolha executar. Na **primeira vez** ele cria o ambiente e instala as dependências (leva alguns minutos e precisa de internet). Nas próximas vezes abre direto o menu.
+4. Para ter um atalho na área de trabalho: clique com o botão direito em `GameLibrary.bat` > **Enviar para** > **Área de trabalho (criar atalho)**.
+
+**O menu**
+
+| Opção | O que faz                                                                              |
+| ----- | -------------------------------------------------------------------------------------- |
+| 1     | Abre o app no navegador. Deixe a janela aberta enquanto usa; fechá-la encerra o app.   |
+| 2     | Sincroniza todas as lojas (Steam, GOG, Epic e a lista manual).                         |
+| 3     | Sincroniza só uma loja.                                                                |
+| 4     | Configura a Steam: pergunta a chave de API e o SteamID64 e salva.                      |
+| 5     | Faz o login na GOG.                                                                    |
+| 6     | Faz o login na Epic.                                                                   |
+| 7     | Atualiza o programa: reinstala as dependências (use depois de baixar uma versão nova). |
+
+Na primeira vez, use as opções **4**, **5** e **6** (só as lojas que você usa) e depois a **2**. No dia a dia, a opção **1** é o suficiente; use a **2** quando comprar jogos novos.
+
+> Se mover ou renomear a pasta depois de instalar, apague a pasta oculta `.venv` dentro dela e abra o arquivo de novo: ele recria o ambiente.
+
+## Instalação manual
 
 ```bash
 git clone <endereço do repositório>
@@ -51,7 +81,7 @@ Você não precisa configurar todas as lojas. Conecte só as que usa e rode o `s
 1. Gere uma chave de API em <https://steamcommunity.com/dev/apikey> (qualquer nome de domínio serve, por exemplo `localhost`).
 2. Descubra seu **SteamID64**, um número de 17 dígitos. Cole a URL do seu perfil em <https://steamid.io> e copie o "steamID64".
 3. No Steam, deixe **Detalhes dos jogos** como **Público**. Sem isso a API devolve uma lista vazia.
-4. Copie o arquivo de exemplo e preencha:
+4. Salve a chave e o ID rodando `gamelibrary steam-setup` (ou a opção 4 do menu do `GameLibrary.bat`). Ele pergunta os dois valores, confere o formato e grava no arquivo `.env`. Se preferir, copie o arquivo de exemplo e preencha à mão:
 
    ```bash
    cp .env.example .env

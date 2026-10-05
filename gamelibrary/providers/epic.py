@@ -12,7 +12,8 @@ LEGENDARY = [sys.executable, "-m", "gamelibrary.legendary_logged"]
 
 
 def _env() -> dict[str, str]:
-    return {**os.environ, "GAMELIBRARY_EPIC_BUDGET": str(net.remaining())}
+    # Legendary prints UTF-8. On Windows the default for pipes is cp1252, which garbles titles like "Batman™".
+    return {**os.environ, "GAMELIBRARY_EPIC_BUDGET": str(net.remaining()), "PYTHONUTF8": "1", "PYTHONIOENCODING": "utf-8"}
 
 
 def login() -> None:
@@ -25,7 +26,8 @@ def _run(args: list[str]) -> tuple[int, str, list[str], bool]:
     """Run Legendary, showing its request log live. Returns (exit code, stdout, other stderr lines, hit the cap)."""
     net.check_allowed("legendary " + " ".join(args))
     proc = subprocess.Popen(
-        [*LEGENDARY, *args], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, env=_env()
+        [*LEGENDARY, *args], stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        text=True, encoding="utf-8", errors="replace", env=_env(),
     )
     out: list[str] = []
     reader = threading.Thread(target=lambda: out.append(proc.stdout.read()))
