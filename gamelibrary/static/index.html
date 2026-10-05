@@ -1022,8 +1022,8 @@
         true,
       );
       // Images already loaded (cache) may not fire "load" again after a re-render.
-      const fitLoadedCovers = () =>
-        document
+      const fitLoadedCovers = (root = document) =>
+        root
           .querySelectorAll("img[data-key]")
           .forEach((img) => img.complete && img.naturalWidth && fitCover(img));
 
@@ -1157,12 +1157,72 @@
         );
       }
 
-      function render() {
-        const open = new Set(
-          [...document.querySelectorAll("#list > li > details[open]")].map(
-            (d) => d.dataset.key,
-          ),
-        );
+      // In the list, a game's edit panel (about 70 elements) is only built when its row is opened.
+      // Building it for every game made the page ~30,000 elements and every keystroke very slow.
+      document.addEventListener(
+        "toggle",
+        (e) => {
+          const row = e.target;
+          if (
+            !(row instanceof HTMLDetailsElement) ||
+            !row.dataset.key ||
+            !row.open
+          )
+            return;
+          const box = row.querySelector(":scope > .entries");
+          if (box && !box.hasChildNodes()) {
+            box.innerHTML = entriesHtml(byKey.get(row.dataset.key));
+            fitLoadedCovers(box);
+          }
+        },
+        true,
+      );
+
+      // Cards are built once and reused. Searching, filtering and sorting only decide which of the
+      // existing elements are shown and in what order (refilter), instead of rebuilding thousands of
+      // elements on every keystroke. Anything that edits a game calls render(), which rebuilds.
+      // One set per view, so switching between grid and list doesn't rebuild either.
+      let caches = { grid: new Map(), list: new Map() };
+      let stale = true;
+      const staleCache = () => (stale = true); // a game was edited: the next render starts from scratch
+      const refilter = () => render(true);
+
+      const itemHtml = (g, open) =>
+        view === "grid"
+          ? `
+    <li class="${g.hidden ? "is-hidden" : ""}" data-key="${esc(g.key)}"><button class="card" data-key="${esc(g.key)}" title="${esc(g.title)}">
+      <div class="cover">${coverHtml(g, "img")}${g.statuses.length ? `<div class="status-stack">${statusPills(g)}</div>` : ""}<div class="badges">${badgesHtml(g)}</div></div>
+      <span class="title">${esc(g.title)}</span>
+      ${g.rating || g.note ? `<span class="ratingline">${starsText(g.rating || 0)}${g.note ? ` <span title="Tem anotações">✎</span>` : ""}</span>` : ""}
+      ${g.tags.length ? `<span class="tagline">${g.tags.map((t) => "#" + esc(t)).join(" ")}</span>` : ""}
+    </button></li>`
+          : `
+    <li class="${g.hidden ? "is-hidden" : ""}" data-key="${esc(g.key)}"><details data-key="${esc(g.key)}" ${open.has(g.key) ? "open" : ""}>
+      <summary>
+        ${coverHtml(g, "thumb")}
+        <span class="title">${esc(g.title)}</span>
+        ${g.platforms.length > 1 ? `<span class="dup">×${g.platforms.length}</span>` : ""}
+        <span class="badges">${statusPills(g)}${badgesHtml(g)}${g.tags.map((t) => `<span class="tag">${esc(t)}</span>`).join("")}</span>
+        ${g.rating || g.note ? `<span class="ratingline" style="padding:0">${g.rating ? "★ " + ratingText(g.rating) : ""}${g.note ? ` <span title="Tem anotações">✎</span>` : ""}</span>` : ""}
+        <span class="hours hours-sum" data-key="${esc(g.key)}">${hours(g.playtime_minutes)}</span>
+      </summary>
+      <div class="entries">${open.has(g.key) ? entriesHtml(g) : ""}</div>
+    </details></li>`;
+
+      function render(reuse = false) {
+        const rebuild = reuse !== true || stale;
+        const open = rebuild
+          ? new Set(
+              [...document.querySelectorAll("#list > li > details[open]")].map(
+                (d) => d.dataset.key,
+              ),
+            )
+          : new Set();
+        if (rebuild) {
+          caches = { grid: new Map(), list: new Map() };
+          stale = false;
+        }
+        const nodeCache = caches[view];
         const list = visible();
         $("count").textContent =
           `${list.length} ${list.length === 1 ? "jogo" : "jogos"}`;
@@ -1172,31 +1232,18 @@
             `<div class="empty">${showHidden ? "Nenhum jogo oculto." : "Nenhum jogo encontrado."}</div>`;
           return;
         }
-        $("list").innerHTML = list
-          .map((g) =>
-            view === "grid"
-              ? `
-    <li class="${g.hidden ? "is-hidden" : ""}"><button class="card" data-key="${esc(g.key)}" title="${esc(g.title)}">
-      <div class="cover">${coverHtml(g, "img")}${g.statuses.length ? `<div class="status-stack">${statusPills(g)}</div>` : ""}<div class="badges">${badgesHtml(g)}</div></div>
-      <span class="title">${esc(g.title)}</span>
-      ${g.rating || g.note ? `<span class="ratingline">${starsText(g.rating || 0)}${g.note ? ` <span title="Tem anotações">✎</span>` : ""}</span>` : ""}
-      ${g.tags.length ? `<span class="tagline">${g.tags.map((t) => "#" + esc(t)).join(" ")}</span>` : ""}
-    </button></li>`
-              : `
-    <li class="${g.hidden ? "is-hidden" : ""}"><details data-key="${esc(g.key)}" ${open.has(g.key) ? "open" : ""}>
-      <summary>
-        ${coverHtml(g, "thumb")}
-        <span class="title">${esc(g.title)}</span>
-        ${g.platforms.length > 1 ? `<span class="dup">×${g.platforms.length}</span>` : ""}
-        <span class="badges">${statusPills(g)}${badgesHtml(g)}${g.tags.map((t) => `<span class="tag">${esc(t)}</span>`).join("")}</span>
-        ${g.rating || g.note ? `<span class="ratingline" style="padding:0">${g.rating ? "★ " + ratingText(g.rating) : ""}${g.note ? ` <span title="Tem anotações">✎</span>` : ""}</span>` : ""}
-        <span class="hours hours-sum" data-key="${esc(g.key)}">${hours(g.playtime_minutes)}</span>
-      </summary>
-      <div class="entries">${entriesHtml(g)}</div>
-    </details></li>`,
-          )
-          .join("");
-        fitLoadedCovers();
+        const missing = list.filter((g) => !nodeCache.has(g.key));
+        if (missing.length) {
+          const template = document.createElement("template");
+          template.innerHTML = missing.map((g) => itemHtml(g, open)).join("");
+          for (const li of template.content.children) {
+            nodeCache.set(li.dataset.key, li);
+            fitLoadedCovers(li);
+          }
+        }
+        const rows = document.createDocumentFragment();
+        for (const g of list) rows.append(nodeCache.get(g.key));
+        $("list").replaceChildren(rows);
       }
 
       function fillDialog(g) {
@@ -1224,7 +1271,7 @@
         } catch {}
         $("viewGrid").setAttribute("aria-pressed", v === "grid");
         $("viewList").setAttribute("aria-pressed", v === "list");
-        render();
+        refilter();
       }
 
       $("viewGrid").addEventListener("click", () => setView("grid"));
@@ -1241,7 +1288,7 @@
         showHidden = !showHidden;
         e.currentTarget.setAttribute("aria-pressed", showHidden);
         renderChips();
-        render();
+        refilter();
       });
       const post = async (path, body) =>
         (
@@ -1403,7 +1450,7 @@
           ? selectedTags.delete(btn.dataset.t)
           : selectedTags.add(btn.dataset.t);
         btn.setAttribute("aria-pressed", selectedTags.has(btn.dataset.t));
-        render();
+        refilter();
       });
       $("statusChips").addEventListener("click", (e) => {
         const btn = e.target.closest("[data-s]");
@@ -1417,7 +1464,7 @@
           selectedStatus.add(s);
         }
         renderStatusChips();
-        render();
+        refilter();
       });
       // Notes autosave shortly after typing stops, and when leaving the field or closing the dialog.
       // They never re-render the list, so typing and focus are not interrupted.
@@ -1435,6 +1482,7 @@
         if (!e.target.classList.contains("note-input")) return;
         const g = byKey.get(e.target.dataset.key);
         g.note = e.target.value;
+        staleCache();
         pendingNote = { key: g.key, text: e.target.value };
         clearTimeout(noteTimer);
         noteTimer = setTimeout(flushNote, 600);
@@ -1448,6 +1496,7 @@
       });
       // Updates the visible bits after a developer/hours edit without re-rendering (which would drop focus).
       function patchFacts(g) {
+        staleCache();
         const set = (selector, text) =>
           document
             .querySelectorAll(selector)
@@ -1596,12 +1645,12 @@
         if (e.target === $("addDlg")) $("addDlg").close();
       });
 
-      $("search").addEventListener("input", render);
-      $("sort").addEventListener("change", render);
+      $("search").addEventListener("input", refilter);
+      $("sort").addEventListener("change", refilter);
       $("dupOnly").addEventListener("click", (e) => {
         dupOnly = !dupOnly;
         e.currentTarget.setAttribute("aria-pressed", dupOnly);
-        render();
+        refilter();
       });
       $("platformChips").addEventListener("click", (e) => {
         const btn = e.target.closest("[data-p]");
@@ -1609,7 +1658,7 @@
         const p = btn.dataset.p;
         selected.has(p) ? selected.delete(p) : selected.add(p);
         btn.setAttribute("aria-pressed", selected.has(p));
-        render();
+        refilter();
       });
 
       async function load() {
