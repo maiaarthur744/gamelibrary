@@ -386,6 +386,20 @@
       .hide-btn:hover {
         color: var(--text);
       }
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 6px;
+        justify-self: start;
+      }
+      .actions .hide-btn {
+        margin-top: 0;
+      }
+      .hide-btn.remove:hover {
+        color: var(--st-dropped);
+        border-color: var(--st-dropped);
+      }
       .is-hidden {
         opacity: 0.55;
       }
@@ -773,8 +787,10 @@
       <form id="addForm" class="add-form">
         <h2>Adicionar jogo</h2>
         <p class="hint">
-          Para lojas sem integração (Battle.net, Amazon Games…). O jogo é salvo
-          em data/manual.json.
+          Para jogos que o sync não traz (outras lojas, consoles, jogos
+          compartilhados…). Vale também para Steam, GOG e Epic: o sync dessas
+          lojas não apaga o que você adiciona aqui. O jogo é salvo em
+          data/manual.json.
         </p>
         <label
           >Plataforma
@@ -830,19 +846,26 @@
         m ? (m >= 600 ? Math.round(m / 60) : (m / 60).toFixed(1)) + " h" : "";
 
       // Ratings are stored as 1-10 (half stars): 7 means 3.5 stars.
-      const starsText = (r) => "★".repeat(Math.floor(r / 2)) + (r % 2 ? "½" : "");
+      const starsText = (r) =>
+        "★".repeat(Math.floor(r / 2)) + (r % 2 ? "½" : "");
       const ratingText = (r) => (r / 2).toLocaleString("pt-BR");
       const hoursValue = (g) =>
-        g.playtime_minutes != null ? String(+(g.playtime_minutes / 60).toFixed(2)) : "";
+        g.playtime_minutes != null
+          ? String(+(g.playtime_minutes / 60).toFixed(2))
+          : "";
       const devNote = (g) =>
         g.developer_custom
-          ? "editado" + (g.developer_auto ? ` (automático: ${g.developer_auto})` : "")
+          ? "editado" +
+            (g.developer_auto ? ` (automático: ${g.developer_auto})` : "")
           : g.developer_auto
             ? "automático"
             : "";
       const hoursNote = (g) =>
         g.playtime_custom
-          ? "editado" + (g.playtime_auto != null ? ` (automático: ${hours(g.playtime_auto)})` : "")
+          ? "editado" +
+            (g.playtime_auto != null
+              ? ` (automático: ${hours(g.playtime_auto)})`
+              : "")
           : g.playtime_auto != null
             ? "automático"
             : "";
@@ -1049,13 +1072,17 @@
        aria-pressed="${g.statuses.includes(k)}" style="--c:var(--st-${k})">${label}</button>`,
         ).join("")}</div>`;
         const r = g.rating || 0;
-        const rating = `<div class="rating" role="group" aria-label="Nota">${[1, 2, 3, 4, 5]
+        const rating = `<div class="rating" role="group" aria-label="Nota">${[
+          1, 2, 3, 4, 5,
+        ]
           .map((n) => {
             const half = (v) =>
               `<button class="${v % 2 ? "hl" : "hr"}" data-action="rate" data-rating="${v}" data-key="${esc(g.key)}" aria-label="${ratingText(v)} estrelas" aria-pressed="${v === g.rating}"></button>`;
             return `<span class="star ${r >= 2 * n ? "on" : r === 2 * n - 1 ? "half" : ""}">★${half(2 * n - 1)}${half(2 * n)}</span>`;
           })
-          .join("")}${g.rating ? `<span class="n">${ratingText(g.rating)}/5</span>` : ""}</div>`;
+          .join(
+            "",
+          )}${g.rating ? `<span class="n">${ratingText(g.rating)}/5</span>` : ""}</div>`;
         const facts = `<div class="facts">
           <label>Desenvolvedora <input class="dev-input" data-key="${esc(g.key)}" value="${esc(g.developer)}" placeholder="Ex.: CD Projekt Red" maxlength="200"></label>
           <span class="fact-note" data-field="developer">${esc(devNote(g))}</span>
@@ -1082,8 +1109,20 @@
                 .join("")}</div>`
             : "";
         const canSplit = g.entries.length > 1;
-        const action = `<button class="hide-btn" data-action="${g.hidden ? "unhide" : "hide"}" data-key="${esc(g.key)}">
+        const hideBtn = `<button class="hide-btn" data-action="${g.hidden ? "unhide" : "hide"}" data-key="${esc(g.key)}">
     ${g.hidden ? "Mostrar de novo" : "Ocultar da lista"}</button>`;
+        // Only licenses added by hand can be removed: the next sync would bring the others back.
+        const removeBtns = g.entries
+          .filter((e) => e.manual)
+          .map((e) => {
+            const label =
+              g.entries.length === 1
+                ? "Remover jogo"
+                : `Remover cópia manual (${name(e.platform)})`;
+            return `<button class="hide-btn remove" data-action="remove-manual" data-platform="${esc(e.platform)}" data-pid="${esc(e.platform_id)}" data-title="${esc(e.title)}" title="${g.entries.length === 1 ? "Apaga este jogo da biblioteca" : "Apaga da biblioteca: " + esc(e.title)}">${esc(label)}</button>`;
+          })
+          .join("");
+        const action = `<div class="actions">${hideBtn}${removeBtns}</div>`;
         const tagEditor = `<div class="tags-edit">
     ${g.tags.map((t) => `<span class="tag">${esc(t)}<button data-action="untag" data-key="${esc(g.key)}" data-tag="${esc(t)}" aria-label="Remover tag ${esc(t)}">✕</button></span>`).join("")}
     <input class="tag-input" list="taglist" data-key="${esc(g.key)}" placeholder="+ tag" maxlength="40"></div>`;
@@ -1097,10 +1136,9 @@
               (e) => `
     <div class="entry">
       <span class="dot" style="--c:${color(e.platform)}"></span>
-      <span class="t">${esc(e.title)} <span class="hours">${esc(name(e.platform))}</span></span>
+      <span class="t">${esc(e.title)} <span class="hours">${esc(name(e.platform))}${e.manual ? " · adicionado à mão" : ""}</span></span>
       <span class="hours">${hours(e.playtime_minutes)}</span>
       ${e.url ? `<a href="${esc(e.url)}" target="_blank" rel="noopener">abrir</a>` : ""}
-      ${e.manual ? `<button class="link-btn" data-action="remove-manual" data-platform="${esc(e.platform)}" data-pid="${esc(e.platform_id)}" data-title="${esc(e.title)}">Remover jogo</button>` : ""}
       ${
         e.split
           ? `<button class="link-btn" data-action="unsplit" data-platform="${esc(e.platform)}" data-pid="${esc(e.platform_id)}">Desfazer separação</button>`
@@ -1278,7 +1316,13 @@
           return reloadKeepDialog(g.key);
         }
         if (action === "remove-manual") {
-          if (!confirm(`Remover "${btn.dataset.title}" da sua lista manual?`))
+          if (
+            !confirm(
+              `Remover "${btn.dataset.title}" da biblioteca?\n\n` +
+                "Isso apaga o jogo. " +
+                "Suas notas, nota, tags e status continuam guardados, caso você adicione o jogo de novo.",
+            )
+          )
             return;
           const res = await api("/api/manual/remove", {
             platform: btn.dataset.platform,
@@ -1405,17 +1449,31 @@
       // Updates the visible bits after a developer/hours edit without re-rendering (which would drop focus).
       function patchFacts(g) {
         const set = (selector, text) =>
-          document.querySelectorAll(selector).forEach((el) => (el.textContent = text));
+          document
+            .querySelectorAll(selector)
+            .forEach((el) => (el.textContent = text));
         const key = CSS.escape(g.key);
         set(`.dev-line[data-key="${key}"]`, g.developer);
         set(`.hours-sum[data-key="${key}"]`, hours(g.playtime_minutes));
-        set(`.hours-total[data-key="${key}"]`, g.playtime_minutes ? hours(g.playtime_minutes) + " no total" : "");
-        document.querySelectorAll(`.dev-input[data-key="${key}"]`).forEach((el) => {
-          el.closest(".facts").querySelector('[data-field="developer"]').textContent = devNote(g);
-        });
-        document.querySelectorAll(`.hours-input[data-key="${key}"]`).forEach((el) => {
-          el.closest(".facts").querySelector('[data-field="hours"]').textContent = hoursNote(g);
-        });
+        set(
+          `.hours-total[data-key="${key}"]`,
+          g.playtime_minutes ? hours(g.playtime_minutes) + " no total" : "",
+        );
+        document
+          .querySelectorAll(`.dev-input[data-key="${key}"]`)
+          .forEach((el) => {
+            el
+              .closest(".facts")
+              .querySelector('[data-field="developer"]').textContent =
+              devNote(g);
+          });
+        document
+          .querySelectorAll(`.hours-input[data-key="${key}"]`)
+          .forEach((el) => {
+            el
+              .closest(".facts")
+              .querySelector('[data-field="hours"]').textContent = hoursNote(g);
+          });
       }
 
       // Start/end dates save as soon as a date is picked. No re-render, so the picker keeps focus.
@@ -1466,7 +1524,8 @@
             return;
           }
           g.playtime_custom = typed !== null;
-          g.playtime_minutes = typed !== null ? Math.round(typed * 60) : g.playtime_auto;
+          g.playtime_minutes =
+            typed !== null ? Math.round(typed * 60) : g.playtime_auto;
           input.value = hoursValue(g);
           patchFacts(g);
         } else if (input.classList.contains("cover-file")) {
@@ -1491,11 +1550,9 @@
       });
 
       // ---- add a game by hand ----
-      const AUTOMATIC = new Set(["steam", "gog", "epic"]);
       function openAddDialog() {
-        const known = new Set(["battlenet", "amazon"]);
-        for (const g of groups)
-          for (const p of g.platforms) if (!AUTOMATIC.has(p)) known.add(p);
+        const known = new Set(["steam", "gog", "epic", "battlenet", "amazon"]);
+        for (const g of groups) for (const p of g.platforms) known.add(p);
         $("addPlatform").innerHTML =
           [...known]
             .map((p) => `<option value="${esc(p)}">${esc(name(p))}</option>`)

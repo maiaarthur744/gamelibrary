@@ -27,4 +27,3 @@ class Meta:
     developers: dict[str, str] = field(default_factory=dict)  # typed by the user, wins over the automatic one
     playtimes: dict[str, int] = field(default_factory=dict)  # minutes typed by the user, wins over the automatic sum
     splits: set[str] = field(default_factory=set)  # entry keys
-    manual: set[str] = field(default_factory=set)  # entry keys of licenses added by hand

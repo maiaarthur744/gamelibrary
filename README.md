@@ -18,7 +18,7 @@ Tudo roda na sua máquina. Seus dados ficam em uma pasta local e nada é enviado
 - **Adicionar jogos manualmente** pela interface, sem editar os arquivos na mão
 - **Trocar a capa** de qualquer jogo por um link ou por uma imagem do seu computador
 - Criar **tags** com os nomes que quiser e filtrar por elas
-- **Ocultar** jogos que você não quer ver
+- **Ocultar** jogos que você não quer ver, ou **Remover** de vez os que você adicionou à mão
 - **Separar** jogos que foram agrupados por engano
 
 ## Requisitos
@@ -112,9 +112,11 @@ A sessão da Epic é guardada pelo próprio Legendary, no perfil do seu usuário
 
 ### Battle.net, Amazon Games e outros (manual)
 
-Essas lojas não oferecem uma forma de listar a biblioteca via API, então você adiciona os jogos à mão. Há duas maneiras.
+Essas lojas não oferecem uma forma de listar a biblioteca via API, então você adiciona os jogos à mão. Existem duas maneiras:
 
-**Pela interface.** Abra o app e clique em **+ Adicionar jogo**. Escolha a plataforma (ou "Outra…" para digitar o nome de uma nova), informe o título e, se quiser, o link da capa, as horas jogadas e o link da loja. O jogo é gravado em `data/manual.json` e aparece na hora, sem precisar rodar `sync`. Para apagar um jogo adicionado assim, abra o jogo e clique em **Remover jogo** ao lado da licença.
+**Pela interface.** Abra o app e clique em **+ Adicionar jogo**. Escolha a plataforma, informe o título e, se quiser, o link da capa, as horas jogadas e o link da loja. O jogo é gravado em `data/manual.json` e aparece na hora, sem precisar rodar `sync`. Na lista de licenças do jogo, as adicionadas à mão aparecem marcadas com "adicionado à mão".
+
+**Ocultar ou remover?** _Ocultar_ só esconde o jogo da lista (e dá para reexibir em "Mostrar ocultos"); serve para qualquer jogo. _Remover jogo_, o botão ao lado de "Ocultar da lista" na parte de baixo do jogo (ele só aparece para jogos adicionados à mão), **apaga o jogo do banco e do `manual.json`**. Se o mesmo card tiver uma cópia do sync e outra adicionada à mão, o botão vira "Remover cópia manual (Steam)" e apaga só a manual. Suas notas, nota, tags e status continuam guardados, e voltam se você adicionar o jogo de novo. Licenças que vieram do sync (Steam, GOG, Epic) não têm o botão, porque o próximo sync as traria de volta; para elas, use Ocultar.
 
 **Editando o arquivo.** Se preferir, copie o modelo e edite:
 
@@ -135,7 +137,7 @@ cp data/manual.example.json data/manual.json
 ```
 
 - `platform` e `title` são obrigatórios. `battlenet` e `amazon` já têm nome e cor próprios na interface. Qualquer outro nome funciona, com uma cor cinza.
-- `steam`, `gog` e `epic` **não podem** ser usados aqui, porque essas lojas são sincronizadas pela própria API.
+- `steam`, `gog` e `epic` também funcionam. O banco guarda de onde veio cada jogo, então o `sync steam` não apaga o que você adicionou à mão e o `sync manual` não apaga os jogos da Steam. Se a loja passar a trazer um jogo que você tinha adicionado, ele aparece duas vezes no mesmo card; é só remover o que foi adicionado à mão.
 - `cover_url` (link de uma imagem), `playtime_minutes`, `url` e `platform_id` são opcionais.
 
 Depois de editar o arquivo à mão, rode `gamelibrary sync manual` e recarregue a página.

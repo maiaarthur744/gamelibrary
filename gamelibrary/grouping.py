@@ -120,7 +120,7 @@ def group_games(rows, meta: Meta | None = None) -> list[dict]:
                         "title": e["title"],
                         "platform_id": e["platform_id"],
                         "split": entry_key(e["platform"], e["platform_id"]) in meta.splits,
-                        "manual": entry_key(e["platform"], e["platform_id"]) in meta.manual,
+                        "manual": e["source"] == "manual",
                         "playtime_minutes": e["playtime_minutes"],
                         "url": e["url"],
                     }

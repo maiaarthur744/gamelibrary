@@ -28,7 +28,6 @@ class Handler(BaseHTTPRequestHandler):
             conn = store.connect()
             rows = conn.execute("SELECT * FROM games").fetchall()
             meta = store.load_meta(conn)
-            meta.manual = manual.entry_keys()
             self._send(200, "application/json", json.dumps(group_games(rows, meta)).encode())
         elif self.path.startswith("/covers/"):
             found = covers.read(self.path.removeprefix("/covers/"))

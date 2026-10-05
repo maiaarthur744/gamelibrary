@@ -20,6 +20,7 @@ CREATE TABLE IF NOT EXISTS games (
     url              TEXT,
     cover_url        TEXT,
     developer        TEXT,
+    source           TEXT NOT NULL DEFAULT 'api',  -- 'api' (a store's sync) or 'manual' (added by hand)
     synced_at        INTEGER NOT NULL,
     PRIMARY KEY (platform, platform_id)
 );
@@ -84,6 +85,12 @@ def connect() -> sqlite3.Connection:
         conn.execute("ALTER TABLE games ADD COLUMN cover_url TEXT")
     if "developer" not in columns:
         conn.execute("ALTER TABLE games ADD COLUMN developer TEXT")
+    if "source" not in columns:  # before this, nothing recorded where a row came from
+        with conn:
+            conn.execute("BEGIN")
+            conn.execute("ALTER TABLE games ADD COLUMN source TEXT NOT NULL DEFAULT 'api'")
+            # Back then only these three stores synced from an API; everything else was typed in by hand.
+            conn.execute("UPDATE games SET source = 'manual' WHERE platform NOT IN ('steam', 'gog', 'epic')")
     _migrate_ratings_to_half_stars(conn)
     return conn
 
@@ -101,17 +108,22 @@ def _migrate_ratings_to_half_stars(conn: sqlite3.Connection) -> None:
         conn.execute("DROP TABLE ratings_old")
 
 
-def replace_platform(conn: sqlite3.Connection, platform: str, games: list[Game]) -> None:
-    """Make the stored games for `platform` match `games` exactly."""
+def replace_platform(conn: sqlite3.Connection, platform: str, games: list[Game], source: str = "api") -> None:
+    """Make the games of `platform` that came from `source` match `games` exactly.
+
+    Rows from the other source are never touched, so a store's sync can't erase games you added by hand
+    to that same store, and the other way around.
+    """
     now = int(time.time())
     with conn:
-        conn.execute("DELETE FROM games WHERE platform = ?", (platform,))
+        conn.execute("DELETE FROM games WHERE platform = ? AND source = ?", (platform, source))
         conn.executemany(
-            "INSERT INTO games (platform, platform_id, title, playtime_minutes, last_played,"
-            " url, cover_url, developer, synced_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            # OR IGNORE: a hand-typed id that equals a real one must not break the whole sync
+            "INSERT OR IGNORE INTO games (platform, platform_id, title, playtime_minutes, last_played,"
+            " url, cover_url, developer, source, synced_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             [
                 (g.platform, g.platform_id, g.title, g.playtime_minutes, g.last_played, g.url,
-                 g.cover_url, g.developer, now)
+                 g.cover_url, g.developer, source, now)
                 for g in games
             ],
         )

@@ -9,8 +9,6 @@ from ..store import DATA_DIR
 MANUAL_PATH = DATA_DIR / "manual.json"
 # Spellings people naturally type, mapped to the names the interface already knows.
 ALIASES = {"battle.net": "battlenet", "battle net": "battlenet", "amazon games": "amazon", "amazon prime gaming": "amazon"}
-# Stores that sync from their own API: a manual entry here would be wiped by (or wipe) the real sync.
-RESERVED = {"steam", "gog", "epic"}
 
 
 def load_entries() -> list[dict]:
@@ -30,10 +28,6 @@ def entry_id(entry: dict) -> str:
     return str(entry.get("platform_id") or entry["title"])
 
 
-def entry_keys() -> set[str]:
-    return {store.entry_key(e["platform"], entry_id(e)) for e in load_entries()}
-
-
 def _http_url(value: str | None, what: str) -> str | None:
     value = (value or "").strip()
     if value and not value.startswith(("http://", "https://", "/covers/")):
@@ -47,8 +41,6 @@ def add_entry(platform: str, title: str, cover_url=None, playtime_hours=None, ur
     title = " ".join(str(title).split())[:200]
     if not platform or not title:
         raise ValueError("informe a plataforma e o título")
-    if platform in RESERVED:
-        raise ValueError(f"{platform} é sincronizada automaticamente; use o sync em vez de adicionar à mão")
     entries = load_entries()
     if any(e["platform"].lower() == platform and e["title"].lower() == title.lower() for e in entries):
         raise ValueError("esse jogo já foi adicionado nessa plataforma")
@@ -78,11 +70,6 @@ def fetch_games() -> list[Game]:
     """Games added by hand (Battle.net, Amazon Games, ...) from data/manual.json."""
     games = []
     for e in load_entries():
-        if e["platform"].lower() in RESERVED:
-            raise ValueError(
-                f"manual.json: '{e['platform']}' é sincronizada automaticamente; "
-                "use outro nome de plataforma para jogos manuais"
-            )
         games.append(
             Game(
                 platform=e["platform"],
@@ -98,10 +85,13 @@ def fetch_games() -> list[Game]:
 
 
 def sync(conn: sqlite3.Connection) -> int:
-    """Make the database match manual.json, including platforms whose games were all removed."""
+    """Make the hand-added rows match manual.json, including platforms whose games were all removed.
+
+    Only rows marked source='manual' are rewritten, so a manual game on Steam, GOG or Epic lives next to
+    that store's synced games without either sync touching the other.
+    """
     games = fetch_games()
-    known = {r["platform"] for r in conn.execute("SELECT DISTINCT platform FROM games")}
-    # Every platform that isn't synced from an API is manual, so it is rewritten (or emptied) here.
-    for platform in ({g.platform for g in games} | known) - RESERVED:
-        store.replace_platform(conn, platform, [g for g in games if g.platform == platform])
+    known = {r["platform"] for r in conn.execute("SELECT DISTINCT platform FROM games WHERE source = 'manual'")}
+    for platform in {g.platform for g in games} | known:
+        store.replace_platform(conn, platform, [g for g in games if g.platform == platform], source="manual")
     return len(games)
