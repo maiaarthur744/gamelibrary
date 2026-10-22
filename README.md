@@ -14,7 +14,7 @@ Tudo roda na sua máquina. Seus dados ficam em uma pasta local e nada é enviado
 - Buscar por nome, desenvolvedora ou tag e ordenar por nome, plataformas, horas jogadas ou jogado recentemente
 - Marcar **status** (um jogo pode ter vários ao mesmo tempo): Jogando, Jogado, Para jogar, Para jogar novamente, Abandonado, Multiplayer/Co-op, Sem fim e Não jogado
 - Dar uma **nota de 0,5 a 5 estrelas**, escrever **anotações ou um review** e registrar a **data de início e de fim** de cada jogo
-- Ver e editar a **desenvolvedora** e as **horas jogadas** de cada jogo
+- Ver e editar a **desenvolvedora**, o **ano de lançamento** e as **horas jogadas** de cada jogo
 - **Adicionar jogos manualmente** pela interface, sem editar os arquivos na mão
 - **Trocar a capa** de qualquer jogo por um link ou por uma imagem do seu computador
 - Criar **tags** com os nomes que quiser e filtrar por elas
@@ -206,11 +206,11 @@ O app foi feito para falar com as lojas o mínimo possível, e para você enxerg
 
 **Quantas chamadas, em geral**
 
-| Loja  | Por sync                                                                                                                                                                                                                               |
-| ----- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Steam | 1 (a lista de jogos). Só pergunta pela capa e pela desenvolvedora de jogos novos: 1 chamada extra a cada 50 jogos que a loja ainda não foi consultada. O primeiro sync gasta um pouco mais: cerca de 5 chamadas extras para 220 jogos. |
-| GOG   | Algumas: uma por página da biblioteca, mais uma para renovar o login quando ele expira.                                                                                                                                                |
-| Epic  | Poucas (menos de 10) quando o cache do Legendary já está preenchido.                                                                                                                                                                   |
+| Loja  | Por sync                                                                                                                                                                                                                                         |
+| ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Steam | 1 (a lista de jogos). Só pergunta pela capa, pela desenvolvedora e pelo ano de jogos novos: 1 chamada extra a cada 50 jogos que a loja ainda não foi consultada. O primeiro sync gasta um pouco mais: cerca de 5 chamadas extras para 220 jogos. |
+| GOG   | Algumas: uma por página da biblioteca, mais uma para renovar o login quando ele expira.                                                                                                                                                          |
+| Epic  | Poucas (menos de 10) quando o cache do Legendary já está preenchido.                                                                                                                                                                             |
 
 **Limites de segurança**
 
@@ -233,11 +233,12 @@ manual.json ───────────┘
 - O **agrupamento** (`gamelibrary/grouping.py`) compara os títulos ignorando ™, ®, acentos, pontuação e o "The" do início, e descarta sufixos de edição como "Game of the Year Edition", "Definitive Edition" e "Director's Cut".
 - O servidor (`gamelibrary/server.py`) só aceita conexões da própria máquina e serve a página em `gamelibrary/static/index.html`, sem nenhuma etapa de build.
 
-### Desenvolvedora e horas
+### Desenvolvedora, ano e horas
 
-No painel de cada jogo há dois campos que você pode editar:
+No painel de cada jogo há três campos que você pode editar:
 
 - **Desenvolvedora.** A Steam e a Epic informam sozinhas. Para a GOG e os jogos manuais o campo começa vazio e você digita. O que você digita vale sempre mais que o automático; para voltar ao automático, apague o texto. A busca da página também procura pela desenvolvedora.
+- **Lançamento (ano).** Aparece ao lado da desenvolvedora, só no painel do jogo. A **GOG** informa o ano na própria lista da biblioteca, e a **Steam** na mesma chamada da desenvolvedora e das capas, então nenhuma das duas gasta chamada extra. Se o jogo está em mais de uma loja, vale o ano **mais antigo**, porque as reedições são sempre mais novas. A **Epic** não informa o lançamento (as datas que ela guarda são de quando o jogo entrou na loja, e erram por anos), então para jogos só da Epic, jogos manuais e de consoles você digita. Como nos outros campos, o que você digita vale mais que o automático; apague para voltar ao automático.
 - **Horas jogadas.** Mostra o total automático. Se você digitar um valor, ele **substitui** o total. Apagar o campo volta ao automático. Zero é um valor válido.
 
 ### Capas
@@ -269,7 +270,13 @@ Como a comparação é só pelo título, às vezes dois jogos diferentes são ag
   **Um jogo principal com vários filhos** (por exemplo, um jogo base e as expansões que a Steam lista à parte): escreva o principal à esquerda com todos os outros, de um destes dois jeitos equivalentes:
 
   ```json
-  { "Dawn of War - Anniversary Edition": ["Dawn of War - Dark Crusade", "Dawn of War - Winter Assault", "Dawn of War - Soulstorm"] }
+  {
+    "Dawn of War - Anniversary Edition": [
+      "Dawn of War - Dark Crusade",
+      "Dawn of War - Winter Assault",
+      "Dawn of War - Soulstorm"
+    ]
+  }
   ```
 
   ```json
@@ -308,6 +315,7 @@ Se for compartilhar o projeto, **não envie esses arquivos**. Cada pessoa cria o
 - **Jogos de outras fontes na Epic:** a listagem inclui jogos resgatados de terceiros, mas eles podem aparecer sem link para a loja.
 - **Consoles (PlayStation, Switch, Xbox…) não têm integração:** as lojas de console não oferecem uma API que valha o risco para a sua conta. Adicione esses jogos à mão, pelo botão **+ Adicionar jogo** (escolha "Outra…" e digite, por exemplo, `playstation`).
 - **Desenvolvedora** vem sozinha da Steam e da Epic. A GOG não informa isso na lista da biblioteca, então nos jogos da GOG e nos manuais você digita.
+- **Ano de lançamento** vem sozinho da Steam e da GOG (na Steam, às vezes é o ano em que o jogo chegou à loja, quando ela não tem a data original; na GOG, algumas datas são imprecisas). A Epic, os jogos manuais e os de console não têm, e você digita.
 - **Horas jogadas** só vêm sozinhas da Steam. Nos outros jogos, digite no campo **Horas jogadas**.
 
 ## Problemas comuns

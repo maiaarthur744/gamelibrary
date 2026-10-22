@@ -666,6 +666,9 @@
       .dev-input {
         width: 210px;
       }
+      .year-input {
+        width: 84px;
+      }
       .hours-input {
         width: 84px;
       }
@@ -858,6 +861,13 @@
           ? "editado" +
             (g.developer_auto ? ` (automático: ${g.developer_auto})` : "")
           : g.developer_auto
+            ? "automático"
+            : "";
+      const yearNote = (g) =>
+        g.release_year_custom
+          ? "editado" +
+            (g.release_year_auto ? ` (automático: ${g.release_year_auto})` : "")
+          : g.release_year_auto
             ? "automático"
             : "";
       const hoursNote = (g) =>
@@ -1086,6 +1096,8 @@
         const facts = `<div class="facts">
           <label>Desenvolvedora <input class="dev-input" data-key="${esc(g.key)}" value="${esc(g.developer)}" placeholder="Ex.: CD Projekt Red" maxlength="200"></label>
           <span class="fact-note" data-field="developer">${esc(devNote(g))}</span>
+          <label>Lançamento <input class="year-input" type="number" min="1950" max="2100" step="1" data-key="${esc(g.key)}" value="${esc(g.release_year ?? "")}" placeholder="Ano"></label>
+          <span class="fact-note" data-field="year">${esc(yearNote(g))}</span>
           <label>Horas jogadas <input class="hours-input" type="number" min="0" step="any" data-key="${esc(g.key)}" value="${esc(hoursValue(g))}" placeholder="0"></label>
           <span class="fact-note" data-field="hours">${esc(hoursNote(g))}</span></div>`;
         const note = `<textarea class="note-input" data-key="${esc(g.key)}" rows="3" maxlength="20000" placeholder="Anotações ou review…">${esc(g.note)}</textarea>`;
@@ -1517,6 +1529,12 @@
               devNote(g);
           });
         document
+          .querySelectorAll(`.year-input[data-key="${key}"]`)
+          .forEach((el) => {
+            el.closest(".facts").querySelector('[data-field="year"]').textContent =
+              yearNote(g);
+          });
+        document
           .querySelectorAll(`.hours-input[data-key="${key}"]`)
           .forEach((el) => {
             el
@@ -1561,6 +1579,25 @@
           g.developer_custom = developer !== "";
           g.developer = developer || g.developer_auto; // empty goes back to the automatic one
           input.value = g.developer;
+          patchFacts(g);
+        } else if (input.classList.contains("year-input")) {
+          const g = byKey.get(input.dataset.key);
+          const raw = input.value.trim();
+          const typed = raw === "" ? null : Number(raw);
+          if (typed !== null && !Number.isInteger(typed)) {
+            alert("Digite o ano com números inteiros, por exemplo 2015.");
+            input.value = g.release_year ?? "";
+            return;
+          }
+          const res = await api("/api/release-year", { key: g.key, year: typed });
+          if (!res.ok) {
+            alert(failMessage(res));
+            input.value = g.release_year ?? "";
+            return;
+          }
+          g.release_year_custom = typed !== null;
+          g.release_year = typed ?? g.release_year_auto; // empty goes back to the automatic one
+          input.value = g.release_year ?? "";
           patchFacts(g);
         } else if (input.classList.contains("hours-input")) {
           const g = byKey.get(input.dataset.key);

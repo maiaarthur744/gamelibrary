@@ -3,7 +3,7 @@ import time
 from urllib.parse import parse_qs, urlencode, urlparse
 
 from .. import net
-from ..models import Game
+from ..models import Game, clean_year
 from ..store import DATA_DIR
 
 # Public client credentials used by GOG Galaxy itself.
@@ -83,6 +83,12 @@ def _access_token() -> str:
     return token["access_token"]
 
 
+def _release_year(value) -> int | None:
+    """releaseDate is {"date": "2019-05-14 00:00:00.000000", ...}; missing for a few products."""
+    date = value.get("date") if isinstance(value, dict) else value
+    return (clean_year(str(date)[:4]) or None) if date else None
+
+
 def fetch_games() -> list[Game]:
     headers = {"Authorization": f"Bearer {_access_token()}"}
     games: list[Game] = []
@@ -100,6 +106,7 @@ def fetch_games() -> list[Game]:
                     title=p["title"],
                     url=f"https://www.gog.com{p['url']}" if p.get("url") else None,
                     cover_url=f"https:{p['image']}_glx_vertical_cover.webp" if p.get("image") else None,
+                    release_year=_release_year(p.get("releaseDate")),
                 )
             )
         page += 1

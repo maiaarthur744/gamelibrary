@@ -149,6 +149,9 @@ def group_games(rows, meta: Meta | None = None) -> list[dict]:
         auto_minutes = sum(playtimes) if playtimes else None
         typed_minutes = meta.playtimes.get(key)
         auto_developer = next((e["developer"] for e in entries if e["developer"]), "")
+        years = [e["release_year"] for e in entries if e["release_year"]]
+        auto_year = min(years) if years else None  # re-releases come later, so the earliest is the real one
+        typed_year = meta.release_years.get(key)
         covers = [e["cover_url"] for e in entries if e["cover_url"]]
         if key in meta.covers:  # the user's own cover goes first; automatic ones stay as fallback
             covers.insert(0, meta.covers[key])
@@ -176,6 +179,9 @@ def group_games(rows, meta: Meta | None = None) -> list[dict]:
                 "developer": meta.developers.get(key) or auto_developer,
                 "developer_auto": auto_developer,
                 "developer_custom": key in meta.developers,
+                "release_year": typed_year or auto_year,
+                "release_year_auto": auto_year,
+                "release_year_custom": typed_year is not None,
                 "last_played": max(played) if played else None,
                 "covers": covers,
                 "alt_covers": [u for u in dict.fromkeys(alternatives) if u not in covers],

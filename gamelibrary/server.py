@@ -63,6 +63,8 @@ class Handler(BaseHTTPRequestHandler):
                 store.set_note(conn, data["key"], data.get("note", ""))
             elif self.path == "/api/developer":
                 store.set_developer(conn, data["key"], data.get("developer", ""))
+            elif self.path == "/api/release-year":
+                store.set_release_year(conn, data["key"], data.get("year"))
             elif self.path == "/api/playtime":
                 store.set_playtime(conn, data["key"], data.get("hours"))
             elif self.path == "/api/cover":

@@ -20,6 +20,7 @@ CREATE TABLE IF NOT EXISTS games (
     url              TEXT,
     cover_url        TEXT,
     developer        TEXT,
+    release_year     INTEGER,  -- NULL: never looked up, 0: looked up and nothing found
     source           TEXT NOT NULL DEFAULT 'api',  -- 'api' (a store's sync) or 'manual' (added by hand)
     synced_at        INTEGER NOT NULL,
     PRIMARY KEY (platform, platform_id)
@@ -45,6 +46,10 @@ CREATE TABLE IF NOT EXISTS ratings (
 CREATE TABLE IF NOT EXISTS developers (
     key       TEXT PRIMARY KEY,  -- grouping key
     developer TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS release_years (
+    key  TEXT PRIMARY KEY,  -- grouping key
+    year INTEGER NOT NULL CHECK (year BETWEEN 1950 AND 2100)
 );
 CREATE TABLE IF NOT EXISTS playtimes (
     key     TEXT PRIMARY KEY,  -- grouping key
@@ -85,6 +90,8 @@ def connect() -> sqlite3.Connection:
         conn.execute("ALTER TABLE games ADD COLUMN cover_url TEXT")
     if "developer" not in columns:
         conn.execute("ALTER TABLE games ADD COLUMN developer TEXT")
+    if "release_year" not in columns:
+        conn.execute("ALTER TABLE games ADD COLUMN release_year INTEGER")
     if "source" not in columns:  # before this, nothing recorded where a row came from
         with conn:
             conn.execute("BEGIN")
@@ -120,10 +127,10 @@ def replace_platform(conn: sqlite3.Connection, platform: str, games: list[Game],
         conn.executemany(
             # OR IGNORE: a hand-typed id that equals a real one must not break the whole sync
             "INSERT OR IGNORE INTO games (platform, platform_id, title, playtime_minutes, last_played,"
-            " url, cover_url, developer, source, synced_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            " url, cover_url, developer, release_year, source, synced_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             [
                 (g.platform, g.platform_id, g.title, g.playtime_minutes, g.last_played, g.url,
-                 g.cover_url, g.developer, source, now)
+                 g.cover_url, g.developer, g.release_year, source, now)
                 for g in games
             ],
         )
@@ -191,6 +198,24 @@ def set_developer(conn: sqlite3.Connection, key: str, developer: str) -> None:
             conn.execute("INSERT OR REPLACE INTO developers (key, developer) VALUES (?, ?)", (key, developer))
         else:  # emptying the field goes back to the automatic value
             conn.execute("DELETE FROM developers WHERE key = ?", (key,))
+
+
+def all_release_years(conn: sqlite3.Connection) -> dict[str, int]:
+    return {r["key"]: r["year"] for r in conn.execute("SELECT key, year FROM release_years")}
+
+
+def set_release_year(conn: sqlite3.Connection, key: str, year: int | None) -> None:
+    """The year typed by the user replaces the automatic one. None or "" removes it."""
+    if year is not None and year != "":
+        if isinstance(year, bool) or not isinstance(year, int):
+            raise TypeError("year must be a whole number")
+        if not 1950 <= year <= 2100:
+            raise ValueError("o ano precisa estar entre 1950 e 2100")
+    with conn:
+        if year is None or year == "":
+            conn.execute("DELETE FROM release_years WHERE key = ?", (key,))
+        else:
+            conn.execute("INSERT OR REPLACE INTO release_years (key, year) VALUES (?, ?)", (key, year))
 
 
 def all_playtimes(conn: sqlite3.Connection) -> dict[str, int]:
@@ -279,6 +304,7 @@ def load_meta(conn: sqlite3.Connection) -> Meta:
         status=all_status(conn),
         ratings=all_ratings(conn),
         developers=all_developers(conn),
+        release_years=all_release_years(conn),
         playtimes=all_playtimes(conn),
         notes=all_notes(conn),
         covers=all_covers(conn),

@@ -38,7 +38,7 @@ class AliasBase(unittest.TestCase):
 
     def groups(self, titles_by_platform):
         rows = [{"platform": p, "platform_id": str(i), "title": t, "playtime_minutes": None, "last_played": None,
-                 "cover_url": None, "developer": None, "source": "api", "url": None}
+                 "cover_url": None, "developer": None, "release_year": None, "source": "api", "url": None}
                 for i, (p, t) in enumerate(titles_by_platform)]
         return group_games(rows)
 
@@ -127,7 +127,7 @@ class OneMainTitleSeveralChildren(AliasBase):
 
     def check(self):
         rows = [{"platform": p, "platform_id": str(i), "title": t, "playtime_minutes": None, "last_played": None,
-                 "cover_url": None, "developer": None, "source": "api", "url": None} for i, (p, t) in enumerate(DOW)]
+                 "cover_url": None, "developer": None, "release_year": None, "source": "api", "url": None} for i, (p, t) in enumerate(DOW)]
         groups = group_games(rows, self.parent_meta())
         self.assertEqual(len(groups), 1, [g["title"] for g in groups])
         group = groups[0]
@@ -172,7 +172,7 @@ class SingleAliasesKeepTheirMeaning(AliasBase):
     def test_the_left_title_joins_the_group_of_the_right_one(self):
         self.path.write_text(json.dumps({"System Shock 2 (1999)": "System Shock 2: 25th Anniversary Remaster"}), encoding="utf-8")
         rows = [{"platform": p, "platform_id": str(i), "title": t, "playtime_minutes": None, "last_played": None,
-                 "cover_url": None, "developer": None, "source": "api", "url": None}
+                 "cover_url": None, "developer": None, "release_year": None, "source": "api", "url": None}
                 for i, (p, t) in enumerate([("gog", "System Shock 2 (1999)"), ("epic", "System Shock 2: 25th Anniversary Remaster")])]
         (group,) = group_games(rows)
         self.assertEqual(group["key"], grouping.normalize("System Shock 2: 25th Anniversary Remaster"))
