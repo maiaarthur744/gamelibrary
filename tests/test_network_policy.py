@@ -299,5 +299,30 @@ class StaticPolicy(unittest.TestCase):
         self.assertEqual(offenders, [])
 
 
+class EpicFirstSync(unittest.TestCase):
+    """The first Epic sync must be able to finish in ONE run (a cap of 100 made it never finish)."""
+
+    def test_the_ceiling_is_high_enough_for_a_cold_cache(self):
+        # ~2 requests per game plus overhead and the third-party phase: a 1000-game library needs ~2100
+        self.assertGreaterEqual(net.BUDGETS["epic"], 1000)
+
+    def test_the_wrapper_default_matches_the_app_budget(self):
+        import re
+        source = (PACKAGE / "legendary_logged.py").read_text(encoding="utf-8")
+        self.assertEqual(re.search(r'"GAMELIBRARY_EPIC_BUDGET", "(\d+)"', source).group(1), str(net.BUDGETS["epic"]))
+
+    def test_a_first_sync_is_announced_and_a_warm_cache_is_not(self):
+        from gamelibrary.providers import epic
+        cache = Path(tempfile.mkdtemp())
+        (cache / "metadata").mkdir()
+        with mock.patch.dict(os.environ, {"LEGENDARY_CONFIG_PATH": str(cache)}):
+            self.assertIn("primeira sincronização", epic.first_sync_notice())
+            for i in range(25):
+                (cache / "metadata" / f"app{i}.json").write_text("{}", encoding="utf-8")
+            self.assertIsNone(epic.first_sync_notice())
+        with mock.patch.dict(os.environ, {"LEGENDARY_CONFIG_PATH": str(cache / "nope")}):
+            self.assertIn("primeira sincronização", epic.first_sync_notice())  # no cache folder at all
+
+
 if __name__ == "__main__":
     unittest.main()

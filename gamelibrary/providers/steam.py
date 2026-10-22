@@ -18,9 +18,10 @@ def _known_info() -> dict[int, tuple[str | None, str]]:
     A game counts as already asked about once its developer is stored, even as "" (the store had none).
     """
     rows = store.connect().execute(
-        "SELECT platform_id, cover_url, developer FROM games WHERE platform = 'steam' AND developer IS NOT NULL"
+        "SELECT platform_id, cover_url, developer FROM games"
+        " WHERE platform = 'steam' AND source = 'api' AND developer IS NOT NULL"  # not the ones added by hand
     )
-    return {int(r["platform_id"]): (r["cover_url"], r["developer"]) for r in rows}
+    return {int(r["platform_id"]): (r["cover_url"], r["developer"]) for r in rows if r["platform_id"].isdigit()}
 
 
 def _store_info(appids: list[int]) -> dict[int, tuple[str | None, str]]:

@@ -138,7 +138,7 @@ A Epic não tem API pública de biblioteca. Por isso o projeto usa o [Legendary]
 
 A sessão da Epic é guardada pelo próprio Legendary, no perfil do seu usuário (fora da pasta do projeto).
 
-> **Na primeira vez, o `sync epic` pode precisar rodar mais de uma vez.** O Legendary busca os metadados de cada jogo que ainda não tem em cache, e o app limita cada sync a 100 chamadas. Quando o limite é atingido, o sync avisa e guarda o progresso; é só rodar `gamelibrary sync epic` de novo. Depois que o cache está preenchido, cada sync faz poucas chamadas.
+> **A primeira sincronização da Epic demora alguns minutos, e termina numa execução só.** O Legendary busca os dados de cada jogo que ainda não tem em cache (cerca de 2 chamadas por jogo, mais 1 por jogo de terceiros, como os resgatados na Ubisoft ou na EA). O app espaça essas chamadas (0,3 s entre elas) e mostra cada uma no terminal; numa biblioteca de 214 jogos e 30 itens de terceiros simulada nos testes foram 464 chamadas, o que leva uns 3 a 5 minutos com o espaçamento. Deixe terminar. Depois disso o cache fica preenchido e os syncs seguintes fazem poucas chamadas.
 
 ### Battle.net, Amazon Games e outros (manual)
 
@@ -200,7 +200,7 @@ O app foi feito para falar com as lojas o mínimo possível, e para você enxerg
 ```
 [net] steam  GET api.steampowered.com/IPlayerService/GetOwnedGames/v1/ -> 200 (0.4s) [1/20]
 [net] gog    GET embed.gog.com/account/getFilteredProducts -> 200 (0.6s) [1/20]
-[net] epic   GET launcher-public-service-prod06.ol.epicgames.com/launcher/api/public/assets/Windows -> 200 (0.5s) [3/100]
+[net] epic   GET launcher-public-service-prod06.ol.epicgames.com/launcher/api/public/assets/Windows -> 200 (0.5s) [3/2000]
 [net] Resumo: steam 1, gog 1, epic 3. Total: 5 chamadas externas.
 ```
 
@@ -214,10 +214,10 @@ O app foi feito para falar com as lojas o mínimo possível, e para você enxerg
 
 **Limites de segurança**
 
-- Há um teto de chamadas por loja em cada sync: Steam 20, GOG 20, Epic 100. Ao chegar no teto, o app para **antes** de enviar a próxima e avisa.
+- Há um teto de segurança de chamadas por loja em cada sync: Steam 20, GOG 20, Epic 2000. Ele existe para barrar um erro que ficasse em laço, não para limitar o uso normal. Ao chegar no teto, o app para **antes** de enviar a próxima e avisa.
 - Os pedidos têm um intervalo mínimo de 0,3 s entre eles, sem rajadas.
 - Para mudar o teto: `GAMELIBRARY_MAX_REQUESTS=10 gamelibrary sync`.
-- **Epic na primeira vez:** o Legendary busca os metadados de cada jogo que ainda não tem em cache. Sozinho, ele faria centenas de chamadas de uma vez. Aqui isso é espalhado: cada sync faz no máximo 100, guarda o progresso, e você roda `gamelibrary sync epic` de novo até terminar. Depois disso o cache fica preenchido e os syncs seguintes são curtos.
+- **Epic na primeira vez:** o Legendary busca os metadados de cada jogo que ainda não tem em cache, centenas de chamadas. Sozinho ele as dispararia de uma vez, em 16 threads; aqui elas saem espaçadas (0,3 s entre cada uma) e a primeira sincronização termina numa execução só, em alguns minutos. Depois disso os syncs seguintes são curtos.
 - `gamelibrary sync steam --refresh-covers` pergunta de novo pelas capas de todos os jogos (muitas chamadas; só use se as capas da Steam estiverem erradas).
 
 ## Como funciona

@@ -194,6 +194,22 @@ class SteamDeveloperLookup(TempDatabase):
         self.assertEqual(len(calls), 1, "everything was already asked about, including the delisted game")
         self.assertEqual(games["Two Devs"].developer, "Studio A, Studio B")
 
+    def test_steam_games_added_by_hand_do_not_break_the_sync(self):
+        """Regression: their ids are hex strings like '09c063038c41', not Steam app ids."""
+        conn = store.connect()
+        store.replace_platform(
+            conn, "steam",
+            [Game("steam", "09c063038c41", "Halo 2", developer=""), Game("steam", "123456789012", "Digits Only", developer="X")],
+            source="manual",
+        )
+        games, calls = self.sync()
+        self.assertEqual(games["Two Devs"].developer, "Studio A, Studio B")
+        self.assertEqual(len(calls), 2, "the hand-added rows must not count as 'already asked about'")
+        manual_rows = conn.execute("SELECT platform_id FROM games WHERE platform = 'steam' AND source = 'manual'").fetchall()
+        self.assertEqual(sorted(r[0] for r in manual_rows), ["09c063038c41", "123456789012"], "and the sync must not touch them")
+        _, calls = self.sync()
+        self.assertEqual(len(calls), 1)
+
     def test_a_failed_store_call_is_retried_next_time(self):
         games, calls = self.sync(fail_store=True)
         self.assertIsNone(games["One Dev"].developer, "unknown, not empty")

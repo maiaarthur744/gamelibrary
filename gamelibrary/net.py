@@ -15,9 +15,11 @@ from urllib.parse import urlsplit
 import httpx
 
 MIN_INTERVAL = 0.3  # seconds between requests
-# Requests allowed per provider in one run. Steam/GOG need 2-6 in practice; Epic needs a handful once
-# Legendary's cache is warm, and hundreds on a first run, which this spreads over several runs.
-BUDGETS = {"steam": 20, "gog": 20, "epic": 100, "manual": 0}
+# Requests allowed per provider in one run: a safety ceiling against loops, not a target.
+# Steam/GOG need 2-6 in practice. Epic needs a handful once Legendary's cache is warm, but its first run
+# fetches metadata for every game (about 2 requests each) and then for the third-party items, so the ceiling
+# must be high enough for that to finish in ONE run. Cutting it short only made first syncs never finish.
+BUDGETS = {"steam": 20, "gog": 20, "epic": 2000, "manual": 0}
 DEFAULT_BUDGET = 20
 
 

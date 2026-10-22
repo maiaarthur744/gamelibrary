@@ -2,8 +2,8 @@
 
 Used instead of the plain `legendary` command:  python -m gamelibrary.legendary_logged list --json
 Legendary fetches metadata for every game missing from its cache, in bursts of 16 threads, which is
-hundreds of requests on a first run. Here they are spaced out and capped per run; Legendary saves what
-it already fetched, so running again continues from where it stopped.
+hundreds of requests on a first run. Here they are spaced out (no bursts) and capped by a high safety
+ceiling. Legendary saves what it already fetched, so if the ceiling is ever hit, running again continues.
 """
 import os
 import sys
@@ -11,7 +11,7 @@ import threading
 import time
 from urllib.parse import urlsplit
 
-MIN_INTERVAL = 0.3
+MIN_INTERVAL = 0.3  # seconds between requests; GAMELIBRARY_EPIC_INTERVAL overrides it (the tests use 0)
 
 
 class BudgetExceeded(Exception):
@@ -26,6 +26,7 @@ def install(budget: int) -> None:
     import requests
 
     original = requests.sessions.Session.request
+    min_interval = float(os.environ.get("GAMELIBRARY_EPIC_INTERVAL", MIN_INTERVAL))
     lock = threading.Lock()
     state = {"count": 0, "last": 0.0}
 
@@ -38,7 +39,7 @@ def install(budget: int) -> None:
             if n > budget:
                 _log(f"epic   BLOQUEADA {str(method).upper()} {parts.netloc}{parts.path} (limite de {budget} chamadas)")
                 raise BudgetExceeded(f"limite de {budget} chamadas externas atingido")
-            wait = state["last"] + MIN_INTERVAL - time.monotonic()
+            wait = state["last"] + min_interval - time.monotonic()
             if wait > 0:
                 time.sleep(wait)
             state["last"] = time.monotonic()
@@ -55,7 +56,7 @@ def install(budget: int) -> None:
 
 
 def main() -> None:
-    install(int(os.environ.get("GAMELIBRARY_EPIC_BUDGET", "100")))
+    install(int(os.environ.get("GAMELIBRARY_EPIC_BUDGET", "2000")))
     from legendary.cli import main as legendary_main
 
     sys.argv = ["legendary", *sys.argv[1:]]
