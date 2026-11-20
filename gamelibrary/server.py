@@ -3,7 +3,7 @@ import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-from . import covers, store
+from . import covers, store, transfer
 from .grouping import group_games
 from .providers import manual
 
@@ -18,6 +18,15 @@ def _clean_tags(raw: list) -> list[str]:
         if tag:
             seen.setdefault(tag.lower(), tag)
     return list(seen.values())[:30]
+
+
+def _string_list(value) -> list[str] | None:
+    """A list of strings, or None when the field was not sent."""
+    if value is None:
+        return None
+    if not isinstance(value, list) or not all(isinstance(v, str) for v in value):
+        raise TypeError("expected a list of strings")
+    return value
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -48,10 +57,21 @@ class Handler(BaseHTTPRequestHandler):
         if length > 10 * 1024 * 1024:
             self._send(413, "text/plain", b"too large")
             return
+        result: dict = {}
         try:
             data = json.loads(self.rfile.read(length))
             conn = store.connect()
-            if self.path == "/api/tags":
+            if self.path == "/api/export":
+                result = transfer.export_data(
+                    conn, keys=_string_list(data.get("keys")), platforms=_string_list(data.get("platforms")),
+                    statuses=_string_list(data.get("statuses")), tags=_string_list(data.get("tags")),
+                    include_aliases=data.get("include_aliases", True) is not False,
+                )
+            elif self.path == "/api/import/preview":
+                result = transfer.preview_import(conn, data["data"], data.get("mode", "fill"))
+            elif self.path == "/api/import/apply":
+                result = transfer.apply_import(conn, data["data"], data.get("mode", "fill"))
+            elif self.path == "/api/tags":
                 store.set_tags(conn, data["key"], _clean_tags(data.get("tags", [])))
             elif self.path in ("/api/hide", "/api/unhide"):
                 store.set_hidden(conn, data["key"], data.get("title", ""), self.path == "/api/hide")
@@ -94,7 +114,7 @@ class Handler(BaseHTTPRequestHandler):
         except (KeyError, TypeError):
             self._send(400, "text/plain", b"bad request")
             return
-        self._send(200, "application/json", b"{}")
+        self._send(200, "application/json", json.dumps(result).encode())
 
     def _send(self, status: int, content_type: str, body: bytes, cache: str = "no-store") -> None:
         self.send_response(status)

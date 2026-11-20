@@ -1,7 +1,9 @@
-.env
-.venv/
-data/
-__pycache__/
 *.egg-info/
+.env
 .mypy_cache/
+.venv/
 TODO.md
+tests/ui/node_modules/
+__pycache__/
+data/
+.Ds_Store

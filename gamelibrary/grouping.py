@@ -128,9 +128,9 @@ def _group_title(key: str, entries: list, main_titles: set[str]) -> str:
     return min(own or [t for t, _ in titles], key=lambda s: (len(s), s))
 
 
-def group_games(rows, meta: Meta | None = None) -> list[dict]:
+def group_games(rows, meta: Meta | None = None, aliases: tuple[dict[str, str], set[str]] | None = None) -> list[dict]:
     meta = meta or Meta()
-    aliases, main_titles = _load_aliases()
+    aliases, main_titles = aliases if aliases is not None else _load_aliases()
     buckets: dict[str, list] = defaultdict(list)
     for r in rows:
         if entry_key(r["platform"], r["platform_id"]) in meta.splits:

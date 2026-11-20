@@ -151,7 +151,7 @@ class WindowsSafeText(unittest.TestCase):
         from gamelibrary.providers import manual
         path = Path(tempfile.mkdtemp()) / "manual.json"
         with mock.patch.object(manual, "MANUAL_PATH", path):
-            manual._save([{"platform": "itch", "title": "原神 ゲーム 🎮 Pokémon™"}])
+            manual.save_entries([{"platform": "itch", "title": "原神 ゲーム 🎮 Pokémon™"}])
             self.assertEqual(manual.load_entries()[0]["title"], "原神 ゲーム 🎮 Pokémon™")
         self.assertIn("原神".encode("utf-8"), path.read_bytes(), "the file itself must be UTF-8")
 

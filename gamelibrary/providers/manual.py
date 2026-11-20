@@ -17,7 +17,7 @@ def load_entries() -> list[dict]:
     return json.loads(MANUAL_PATH.read_text(encoding="utf-8"))
 
 
-def _save(entries: list[dict]) -> None:
+def save_entries(entries: list[dict]) -> None:
     DATA_DIR.mkdir(exist_ok=True)
     tmp = MANUAL_PATH.with_suffix(".json.tmp")
     tmp.write_text(json.dumps(entries, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
@@ -54,7 +54,7 @@ def add_entry(platform: str, title: str, cover_url=None, playtime_hours=None, ur
         if hours < 0:
             raise ValueError("as horas jogadas não podem ser negativas")
         entry["playtime_minutes"] = round(hours * 60)
-    _save(entries + [entry])
+    save_entries(entries + [entry])
     return entry
 
 
@@ -63,7 +63,7 @@ def remove_entry(platform: str, platform_id: str) -> None:
     kept = [e for e in entries if not (e["platform"] == platform and entry_id(e) == platform_id)]
     if len(kept) == len(entries):
         raise ValueError("jogo manual não encontrado")
-    _save(kept)
+    save_entries(kept)
 
 
 def fetch_games() -> list[Game]:

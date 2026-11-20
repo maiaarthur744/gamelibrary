@@ -1,0 +1,7 @@
+{
+  "name": "gamelibrary-ui-tests",
+  "private": true,
+  "description": "Browser-side tests: the real page in jsdom, talking to the real server",
+  "scripts": { "test": "node transfer.e2e.js && node year.test.js" },
+  "devDependencies": { "jsdom": "^24.0.0" }
+}

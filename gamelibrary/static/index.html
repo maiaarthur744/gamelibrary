@@ -484,6 +484,96 @@
       .add-btn {
         margin-left: auto;
       }
+      .header-actions {
+        margin-left: auto;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+      .add-form fieldset {
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        margin: 0;
+        padding: 8px 12px 10px;
+        display: grid;
+        gap: 6px;
+      }
+      .add-form legend {
+        font-size: 13px;
+        color: var(--muted);
+        padding: 0 4px;
+      }
+      .add-form label.inline {
+        display: flex;
+        gap: 8px;
+        align-items: flex-start;
+        font-size: 14px;
+        color: var(--text);
+      }
+      .add-form label.inline input {
+        width: auto;
+        margin-top: 3px;
+      }
+      .add-form label.inline small {
+        display: block;
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .checks {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px 16px;
+        max-height: 130px;
+        overflow: auto;
+      }
+      .checks label.inline {
+        align-items: center;
+        font-size: 13px;
+      }
+      .checks label.inline input {
+        margin-top: 0;
+      }
+      .add-form .ok {
+        margin: 0;
+        font-size: 13px;
+        color: var(--st-played);
+      }
+      .report {
+        font-size: 13px;
+        display: grid;
+        gap: 6px;
+        max-height: 300px;
+        overflow: auto;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 10px 12px;
+        background: var(--bg);
+      }
+      .report p,
+      .report ul {
+        margin: 0;
+      }
+      .report ul {
+        padding-left: 18px;
+        display: grid;
+        gap: 2px;
+      }
+      .report table {
+        border-collapse: collapse;
+        width: 100%;
+        font-size: 12px;
+      }
+      .report th,
+      .report td {
+        text-align: left;
+        padding: 2px 6px;
+        border-bottom: 1px solid var(--border);
+        vertical-align: top;
+        overflow-wrap: anywhere;
+      }
+      .report .muted {
+        color: var(--muted);
+      }
       .dates {
         display: flex;
         flex-wrap: wrap;
@@ -571,7 +661,7 @@
         font-size: 13px;
         color: var(--muted);
       }
-      .add-form input,
+      .add-form input:not([type="checkbox"]):not([type="radio"]),
       .add-form select {
         width: 100%;
         font-size: 14px;
@@ -724,7 +814,11 @@
       <header>
         <h1>Game Library</h1>
         <div class="stats" id="stats"></div>
-        <button class="chip add-btn" id="addBtn">+ Adicionar jogo</button>
+        <div class="header-actions">
+          <button class="chip" id="exportBtn">Exportar</button>
+          <button class="chip" id="importBtn">Importar</button>
+          <button class="chip" id="addBtn">+ Adicionar jogo</button>
+        </div>
       </header>
 
       <div class="toolbar">
@@ -822,6 +916,108 @@
       </form>
     </dialog>
 
+    <dialog id="exportDlg">
+      <form id="exportForm" class="add-form">
+        <h2>Exportar dados</h2>
+        <p class="hint">
+          Gera um arquivo com a sua organização (status, tags, nota,
+          anotações, desenvolvedora, ano, horas, datas, capas por link e jogos
+          ocultos), os jogos adicionados à mão e as separações. Não leva os jogos
+          das lojas (cada computador os busca com o sync) nem senhas ou logins.
+        </p>
+        <fieldset>
+          <legend>O que exportar</legend>
+          <label class="inline">
+            <input type="radio" name="expScope" value="all" checked />
+            <span>Tudo</span>
+          </label>
+          <label class="inline">
+            <input type="radio" name="expScope" value="screen" />
+            <span>
+              O que está na tela agora
+              <small><span id="expScreenCount">0</span> jogos, com os filtros e a busca atuais</small>
+            </span>
+          </label>
+          <label class="inline">
+            <input type="radio" name="expScope" value="filters" />
+            <span>
+              Escolher por filtros
+              <small>Dentro de cada grupo vale qualquer um; entre os grupos, todos.</small>
+            </span>
+          </label>
+        </fieldset>
+        <div id="expFilters" hidden>
+          <fieldset>
+            <legend>Lojas</legend>
+            <div class="checks" id="expPlatforms"></div>
+          </fieldset>
+          <fieldset>
+            <legend>Status</legend>
+            <div class="checks" id="expStatuses"></div>
+          </fieldset>
+          <fieldset>
+            <legend>Tags</legend>
+            <div class="checks" id="expTags"></div>
+          </fieldset>
+        </div>
+        <label class="inline">
+          <input type="checkbox" id="expAliases" checked />
+          <span>
+            Incluir as junções de títulos (aliases.json)
+            <small>Ajudam os dois computadores a agrupar os jogos do mesmo jeito.</small>
+          </span>
+        </label>
+        <p class="ok" id="exportOk" role="status" hidden></p>
+        <p class="error" id="exportError" role="alert" hidden></p>
+        <div class="form-actions">
+          <button type="button" class="chip" id="exportClose">Fechar</button>
+          <button type="submit" class="chip primary">Baixar arquivo</button>
+        </div>
+      </form>
+    </dialog>
+    <dialog id="importDlg">
+      <form id="importForm" class="add-form">
+        <h2>Importar dados</h2>
+        <p class="hint">
+          Escolha um arquivo exportado pelo Game Library. Antes de gravar, você
+          vê o que vai mudar, e um backup do seu banco é feito sozinho.
+        </p>
+        <label>
+          Arquivo
+          <input type="file" id="importFile" accept=".json,application/json" />
+        </label>
+        <fieldset id="importModes" hidden>
+          <legend>Se o jogo já tem dados aqui</legend>
+          <label class="inline">
+            <input type="radio" name="impMode" value="fill" checked />
+            <span>
+              Preencher lacunas (recomendado)
+              <small>Só grava o que está vazio aqui. Nunca sobrescreve o que você já fez.</small>
+            </span>
+          </label>
+          <label class="inline">
+            <input type="radio" name="impMode" value="merge" />
+            <span>
+              Unir
+              <small>Status e tags são somados. O resto só preenche lacunas.</small>
+            </span>
+          </label>
+          <label class="inline">
+            <input type="radio" name="impMode" value="overwrite" />
+            <span>
+              Sobrescrever
+              <small>O que vem no arquivo substitui o que você tem. Nada é apagado.</small>
+            </span>
+          </label>
+        </fieldset>
+        <div class="report" id="importReport" hidden></div>
+        <p class="error" id="importError" role="alert" hidden></p>
+        <div class="form-actions">
+          <button type="button" class="chip" id="importClose">Fechar</button>
+          <button type="submit" class="chip primary" id="importApply" disabled>Importar</button>
+        </div>
+      </form>
+    </dialog>
     <script>
       const PLATFORM_NAMES = {
         steam: "Steam",
@@ -1318,7 +1514,11 @@
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(body),
         });
-        return { ok: r.ok, error: r.ok ? "" : await r.text() };
+        return {
+          ok: r.ok,
+          error: r.ok ? "" : await r.text(),
+          data: r.ok ? await r.json().catch(() => null) : null,
+        };
       };
       const failMessage = (res) =>
         res.error && res.error !== "bad request"
@@ -1634,6 +1834,236 @@
           reloadKeepDialog(key);
         }
       });
+
+      // ---- export and import ----
+      const checked = (name) =>
+        [...document.querySelectorAll(`input[name="${name}"]:checked`)].map(
+          (i) => i.value,
+        );
+      const showMsg = (id, text) => {
+        $(id).textContent = text;
+        $(id).hidden = !text;
+      };
+
+      function downloadJson(filename, data) {
+        const blob = new Blob([JSON.stringify(data, null, 2)], {
+          type: "application/json",
+        });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = filename;
+        document.body.append(link);
+        link.click();
+        link.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+      }
+
+      function openExportDialog() {
+        const platforms = [...new Set(groups.flatMap((g) => g.platforms))].sort();
+        const tags = [...new Set(groups.flatMap((g) => g.tags))].sort((a, b) =>
+          a.localeCompare(b),
+        );
+        const box = (name, value, label) =>
+          `<label class="inline"><input type="checkbox" name="${name}" value="${esc(value)}"> <span>${esc(label)}</span></label>`;
+        $("expPlatforms").innerHTML = platforms
+          .map((p) => box("expPlatform", p, name(p)))
+          .join("");
+        $("expStatuses").innerHTML = STATUSES.map(([k, label]) =>
+          box("expStatus", k, label),
+        ).join("");
+        $("expTags").innerHTML = tags.length
+          ? tags.map((t) => box("expTag", t, t)).join("")
+          : '<span class="hint">Nenhuma tag ainda.</span>';
+        $("expScreenCount").textContent = visible().length;
+        document.querySelector('input[name="expScope"][value="all"]').checked = true;
+        $("expFilters").hidden = true;
+        showMsg("exportOk", "");
+        showMsg("exportError", "");
+        $("exportDlg").showModal();
+      }
+
+      function exportRequest() {
+        const scope = document.querySelector('input[name="expScope"]:checked').value;
+        const body = { include_aliases: $("expAliases").checked };
+        if (scope === "screen") body.keys = visible().map((g) => g.key);
+        if (scope === "filters") {
+          body.platforms = checked("expPlatform");
+          body.statuses = checked("expStatus");
+          body.tags = checked("expTag");
+        }
+        return { scope, body };
+      }
+
+      async function submitExport(e) {
+        e.preventDefault();
+        showMsg("exportOk", "");
+        showMsg("exportError", "");
+        const { scope, body } = exportRequest();
+        const res = await api("/api/export", body);
+        if (!res.ok) return showMsg("exportError", failMessage(res));
+        const s = res.data.summary;
+        // A filtered or on-screen export that matches no game would still carry every alias: not what was asked.
+        const noGames = !s.groups && !s.manual_games && !s.splits;
+        if (noGames && (scope !== "all" || !s.aliases))
+          return showMsg("exportError", "Não há nada para exportar com essa escolha.");
+        const day = new Date().toISOString().slice(0, 10);
+        downloadJson(`game-library-${scope === "all" ? "tudo" : scope === "screen" ? "tela" : "filtrado"}-${day}.json`, res.data);
+        const parts = [
+          `${s.groups} jogos com organização`,
+          `${s.manual_games} jogos manuais`,
+          `${s.splits} separações`,
+          `${s.aliases} junções de títulos`,
+        ];
+        showMsg(
+          "exportOk",
+          "Arquivo gerado: " + parts.join(", ") + "." +
+            (s.uploaded_covers_skipped
+              ? ` ${s.uploaded_covers_skipped} capa(s) enviada(s) do computador ficaram de fora (só links são exportados).`
+              : ""),
+        );
+        if (s.warnings.length) showMsg("exportError", s.warnings.join(" "));
+      }
+
+      let importData = null;
+      const FIELD_LABELS = {
+        statuses: "Status", tags: "Tags", rating: "Nota", note: "Anotação", developer: "Desenvolvedora",
+        release_year: "Ano", playtime_minutes: "Horas", started: "Início", finished: "Fim", cover: "Capa",
+        aliases: "Junção de títulos",
+      };
+      const RESOLUTIONS = { kept_local: "mantido o daqui", imported: "usado o do arquivo", merged: "unidos" };
+      function fieldValue(field, v) {
+        if (Array.isArray(v)) return v.map((x) => statusLabel(x) || x).join(", ");
+        if (field === "rating") return ratingText(v) + " ★";
+        if (field === "playtime_minutes") return hours(v);
+        return String(v ?? "");
+      }
+
+      function renderReport(r, applied) {
+        const g = r.groups, f = r.fields, m = r.manual_games;
+        const rows = r.conflicts
+          .slice(0, 15)
+          .map(
+            (c) => `<tr><td>${esc(c.title)}</td><td>${esc(FIELD_LABELS[c.field] || c.field)}</td>
+              <td>${esc(fieldValue(c.field, c.local))}</td><td>${esc(fieldValue(c.field, c.imported))}</td>
+              <td>${esc(RESOLUTIONS[c.resolution] || c.resolution)}</td></tr>`,
+          )
+          .join("");
+        $("importReport").innerHTML = `
+          <p><b>${applied ? "Importação concluída." : "Prévia: nada foi gravado ainda."}</b></p>
+          <ul>
+            <li>No arquivo: ${r.file.groups} jogos com organização, ${r.file.manual_games} jogos manuais, ${r.file.splits} separações e ${r.file.aliases} junções de títulos.</li>
+            <li>Jogos encontrados aqui: <b>${g.found_here}</b>${g.matched_by_license ? ` (mais ${g.matched_by_license} reconhecidos pelas licenças)` : ""}.
+              Ainda sem o jogo neste computador: ${g.waiting_for_the_game}. Os dados ficam guardados e aparecem quando o sync trouxer o jogo.</li>
+            <li>Campos: <b>${f.written}</b> novos, ${f.unchanged} já iguais, ${f.kept_local} mantidos por já existirem aqui,
+              ${f.overwritten} sobrescritos, ${f.merged} unidos${f.skipped_invalid ? `, ${f.skipped_invalid} ignorados por valor inválido` : ""}.</li>
+            <li>Jogos manuais: <b>${m.added}</b> novos, ${m.already_there} já existiam${m.invalid ? `, ${m.invalid} inválidos` : ""}.</li>
+            <li>Separações: ${r.splits.added} novas. Junções de títulos: ${r.aliases.added} novas${r.aliases.conflicting ? `, ${r.aliases.conflicting} em conflito (mantidas as daqui)` : ""}.</li>
+          </ul>
+          ${rows ? `<p>Conflitos${r.conflicts_total > 15 ? ` (primeiros 15 de ${r.conflicts_total})` : ""}:</p>
+            <table><tr><th>Jogo</th><th>Campo</th><th>Aqui</th><th>Arquivo</th><th>Resultado</th></tr>${rows}</table>` : ""}
+          ${r.warnings.length ? `<p>Avisos:</p><ul>${r.warnings.slice(0, 10).map((w) => `<li>${esc(w)}</li>`).join("")}</ul>` : ""}
+          ${applied ? `<p class="muted">Backup feito em: ${esc(r.backup)}</p>` : ""}`;
+        $("importReport").hidden = false;
+      }
+
+      const importMode = () => document.querySelector('input[name="impMode"]:checked').value;
+      function resetImport() {
+        importData = null;
+        $("importFile").value = "";
+        $("importModes").hidden = true;
+        $("importReport").hidden = true;
+        $("importApply").disabled = true;
+        $("importApply").textContent = "Importar";
+        showMsg("importError", "");
+        document.querySelector('input[name="impMode"][value="fill"]').checked = true;
+      }
+
+      async function previewImport() {
+        showMsg("importError", "");
+        $("importApply").disabled = true;
+        const res = await api("/api/import/preview", { data: importData, mode: importMode() });
+        if (!res.ok) {
+          $("importModes").hidden = true;
+          $("importReport").hidden = true;
+          return showMsg("importError", failMessage(res));
+        }
+        $("importModes").hidden = false;
+        renderReport(res.data, false);
+        $("importApply").disabled = false;
+      }
+
+      const readText = (file) =>
+        new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = reject;
+          reader.readAsText(file);
+        });
+
+      async function submitImport(e) {
+        e.preventDefault();
+        const mode = importMode();
+        if (mode === "overwrite" && !confirm("Sobrescrever vai substituir o que você já tem pelos dados do arquivo (nada é apagado, e um backup é feito antes). Continuar?"))
+          return;
+        $("importApply").disabled = true;
+        const res = await api("/api/import/apply", { data: importData, mode });
+        if (!res.ok) {
+          $("importApply").disabled = false;
+          return showMsg("importError", failMessage(res));
+        }
+        renderReport(res.data, true);
+        $("importModes").hidden = true;
+        $("importApply").textContent = "Importado";
+        await load(); // the page now shows the imported organization
+      }
+
+      $("exportBtn").addEventListener("click", openExportDialog);
+      $("exportClose").addEventListener("click", () => $("exportDlg").close());
+      $("exportForm").addEventListener("submit", submitExport);
+      document.querySelectorAll('input[name="expScope"]').forEach((radio) =>
+        radio.addEventListener("change", () => {
+          $("expFilters").hidden =
+            document.querySelector('input[name="expScope"]:checked').value !== "filters";
+        }),
+      );
+      $("exportDlg").addEventListener("click", (e) => {
+        if (e.target === $("exportDlg")) $("exportDlg").close();
+      });
+
+      $("importBtn").addEventListener("click", () => {
+        resetImport();
+        $("importDlg").showModal();
+      });
+      $("importClose").addEventListener("click", () => $("importDlg").close());
+      $("importForm").addEventListener("submit", submitImport);
+      $("importDlg").addEventListener("click", (e) => {
+        if (e.target === $("importDlg")) $("importDlg").close();
+      });
+      $("importFile").addEventListener("change", async () => {
+        const file = $("importFile").files[0];
+        if (!file) return resetImport();
+        const fail = (text) => {
+          importData = null;
+          $("importModes").hidden = true;
+          $("importReport").hidden = true;
+          $("importApply").disabled = true;
+          showMsg("importError", text);
+        };
+        if (file.size > 9 * 1024 * 1024)
+          return fail("O arquivo é grande demais (o máximo é 9 MB).");
+        try {
+          importData = JSON.parse(await readText(file));
+        } catch {
+          return fail("Esse arquivo não é um JSON válido.");
+        }
+        previewImport();
+      });
+      document
+        .querySelectorAll('input[name="impMode"]')
+        .forEach((radio) =>
+          radio.addEventListener("change", () => importData && previewImport()),
+        );
 
       // ---- add a game by hand ----
       function openAddDialog() {

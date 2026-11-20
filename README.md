@@ -20,6 +20,7 @@ Tudo roda na sua máquina. Seus dados ficam em uma pasta local e nada é enviado
 - Criar **tags** com os nomes que quiser e filtrar por elas
 - **Ocultar** jogos que você não quer ver, ou **Remover** de vez os que você adicionou à mão
 - **Separar** jogos que foram agrupados por engano
+- **Exportar e importar** a sua organização, inteira ou só uma parte, para passar para outro computador ou atualizar um deles
 
 ## Requisitos
 
@@ -293,6 +294,57 @@ Como a comparação é só pelo título, às vezes dois jogos diferentes são ag
 
 Tags, status, nota, anotações e ocultação ficam ligados ao grupo. Um card criado ao separar começa sem eles.
 
+## Exportar e importar
+
+Os botões **Exportar** e **Importar**, no topo da página, servem para levar a sua organização de um computador para outro (uma vez, ao configurar um computador novo) ou para atualizar uma parte depois (por exemplo, só os jogos da Steam, ou só os "Para jogar").
+
+**O que vai no arquivo** (um `.json`, que você pode abrir e ler):
+
+- a sua organização de cada jogo: status, tags, nota, anotações, desenvolvedora, ano e horas **que você digitou**, datas, capa por link e se está oculto;
+- os jogos que você adicionou à mão e as separações;
+- as junções de títulos (`aliases.json`), se você deixar marcado.
+
+**O que não vai:** os jogos que as lojas devolvem (cada computador os busca com o `sync`), valores automáticos (a desenvolvedora que a Steam informou, por exemplo), imagens de capa enviadas do computador (só links), e **nunca** senhas, tokens ou logins.
+
+### Exportar
+
+Escolha o que exportar e clique em **Baixar arquivo**:
+
+- **Tudo.**
+- **O que está na tela agora:** os jogos que a busca e os filtros da página mostram nesse momento.
+- **Escolher por filtros:** por loja, por status e por tag. Dentro de um grupo vale qualquer um (Steam ou GOG); entre os grupos, todos (Steam **e** Para jogar). Os jogos manuais e as separações dos jogos escolhidos vão junto.
+
+### Importar
+
+1. Clique em **Importar** e escolha o arquivo.
+2. A página mostra uma **prévia** do que vai acontecer (quantos campos novos, quantos conflitos, quais jogos manuais entram), sem gravar nada.
+3. Escolha como tratar o que já existe aqui e clique em **Importar**. Antes de gravar, o app copia o banco, o `manual.json` e o `aliases.json` para `data/backups/before-import-DATA-HORA/`. A importação é tudo ou nada: se algo falhar no meio, nada fica pela metade.
+
+| Modo                           | O que faz quando o jogo já tem dados aqui                            |
+| ------------------------------ | -------------------------------------------------------------------- |
+| **Preencher lacunas** (padrão) | Só grava o que está vazio aqui. Nunca sobrescreve o que você já fez. |
+| **Unir**                       | Status e tags são somados. O resto só preenche lacunas.              |
+| **Sobrescrever**               | O que vem no arquivo substitui o que você tem (pede confirmação).    |
+
+Em todos os modos, **nada é apagado**: se o arquivo não traz um campo, o valor daqui fica como está. Um jogo só é ocultado, nunca reexibido. Uma junção de títulos que já tem destino aqui não muda (o conflito aparece na prévia). Jogos manuais que já existem (mesma loja e mesmo id, ou mesmo título) não são duplicados.
+
+**A ordem não importa.** Você pode importar antes ou depois do `sync`: os dados de um jogo que ainda não chegou ficam guardados e aparecem sozinhos quando o `sync` trouxer o jogo.
+
+**Computador novo, na prática:** instale o app, conecte as contas e rode o `sync` das lojas, e importe o arquivo (em qualquer ordem entre essas duas etapas).
+
+**Limite:** o app não guarda a data em que cada dado foi alterado, então não existe "o mais recente vence". Por isso o modo padrão nunca sobrescreve. Para atualizar um computador com o que mudou no outro, exporte só a parte que mudou e importe em **Preencher lacunas** ou **Unir**.
+
+**Para desfazer uma importação:** feche o app e copie de volta os arquivos da pasta de backup (`library.db`, `manual.json` e `aliases.json`) para a pasta `data/`.
+
+## Testes
+
+```bash
+python -m unittest discover tests -v     # o servidor, os dados, as importações, a Epic simulada...
+cd tests/ui && npm install && npm test   # a página de verdade conversando com o servidor de verdade (precisa do Node)
+```
+
+Os testes usam bancos e pastas temporários e nenhuma chamada à internet.
+
 ## Onde ficam seus dados
 
 Tudo o que é seu fica fora do controle de versão (`.gitignore`):
@@ -305,6 +357,7 @@ Tudo o que é seu fica fora do controle de versão (`.gitignore`):
 | `data/manual.json`    | sua lista manual                                                            |
 | `data/covers/`        | imagens de capa que você enviou                                             |
 | `data/aliases.json`   | junções manuais de títulos                                                  |
+| `data/backups/`       | cópias feitas automaticamente antes de cada importação                      |
 
 Se for compartilhar o projeto, **não envie esses arquivos**. Cada pessoa cria os próprios, seguindo os passos acima.
 
